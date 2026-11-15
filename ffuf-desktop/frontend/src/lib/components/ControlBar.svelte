@@ -1,5 +1,6 @@
 <script lang="ts">
   import { scanStore } from '../stores/scan.svelte';
+  import { wordlistsStore } from '../stores/wordlists.svelte';
   import Icon from './Icon.svelte';
 
   let liveFilterType = $state<'status' | 'size' | 'words' | 'lines'>('status');
@@ -62,6 +63,19 @@
         disabled={scanStore.state === 'Running'}
         class="text-input font-mono"
       />
+      <button
+        type="button"
+        class="btn-browse-file"
+        disabled={scanStore.state === 'Running'}
+        onclick={async () => {
+          const selected = await wordlistsStore.openNativeFilePicker('link');
+          if (selected) scanStore.wordlist = selected;
+        }}
+        title="Browse for wordlist file on disk"
+        aria-label="Browse wordlist file"
+      >
+        <Icon name="folder" size={13} />
+      </button>
     </div>
 
     <!-- Threads Input -->
@@ -241,6 +255,28 @@
   .wordlist-group {
     flex: 2;
     min-width: 180px;
+    display: flex;
+    align-items: center;
+  }
+
+  .btn-browse-file {
+    height: 24px;
+    width: 24px;
+    background: none;
+    border: none;
+    border-radius: 4px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--text-secondary);
+    cursor: pointer;
+    margin-right: -4px;
+    flex-shrink: 0;
+  }
+
+  .btn-browse-file:hover:not(:disabled) {
+    background-color: var(--surface-hover);
+    color: var(--text);
   }
 
   .compact-group {

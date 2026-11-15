@@ -17,6 +17,7 @@ import (
 	"ffuf-desktop/internal/output"
 	"ffuf-desktop/internal/scan"
 	"ffuf-desktop/internal/store"
+	"ffuf-desktop/internal/wordlists"
 
 	"github.com/ffuf/ffuf/v2/pkg/ffuf"
 	"github.com/ffuf/ffuf/v2/pkg/filter"
@@ -66,6 +67,7 @@ type Service struct {
 	emitterMu     sync.RWMutex
 	store         *store.Store
 	blobs         *blobs.Storage
+	wordlists     *wordlists.Manager
 	activeSession *scan.Session
 	sessionMu     sync.Mutex
 	dataDir       string
@@ -101,11 +103,19 @@ func NewService(dataDir string, logger *slog.Logger) (*Service, error) {
 		return nil, fmt.Errorf("failed to initialize blob storage: %w", err)
 	}
 
+	wm, err := wordlists.NewManager(dataDir, st.WriterDB())
+	if err != nil {
+		_ = bl.Close()
+		_ = st.Close()
+		return nil, fmt.Errorf("failed to initialize wordlists manager: %w", err)
+	}
+
 	return &Service{
-		store:   st,
-		blobs:   bl,
-		dataDir: dataDir,
-		logger:  logger,
+		store:     st,
+		blobs:     bl,
+		wordlists: wm,
+		dataDir:   dataDir,
+		logger:    logger,
 	}, nil
 }
 
@@ -247,6 +257,9 @@ func (s *Service) StartScan(req ScanRequestDTO) (int64, error) {
 			s.emitEvent("scan:progress", p)
 		},
 		EmitState: func(st scan.State, errMsg string) {
+			if st == scan.StateCompleted || st == scan.StateFailed || st == scan.StateStopped {
+				s.wordlists.UnlockWordlist(req.Wordlist)
+			}
 			s.emitEvent("scan:state", StateEvent{
 				SessionID: sessionID,
 				State:     st,
@@ -259,7 +272,10 @@ func (s *Service) StartScan(req ScanRequestDTO) (int64, error) {
 		return 0, fmt.Errorf("failed to create scan session: %w", err)
 	}
 
+	s.wordlists.LockWordlist(req.Wordlist)
+
 	if err := sess.Start(); err != nil {
+		s.wordlists.UnlockWordlist(req.Wordlist)
 		cancel()
 		return 0, fmt.Errorf("failed to start scan session: %w", err)
 	}
@@ -445,4 +461,81 @@ func (s *Service) Close() error {
 		return fmt.Errorf("errors closing bridge service: %v", errs)
 	}
 	return nil
+}
+
+// ListWordlists returns all registered wordlists.
+func (s *Service) ListWordlists() ([]wordlists.WordlistDTO, error) {
+	return s.wordlists.ListWordlists()
+}
+
+// CreateWordlist creates a new managed wordlist.
+func (s *Service) CreateWordlist(name, initialContent string) (*wordlists.WordlistDTO, error) {
+	return s.wordlists.CreateWordlist(name, initialContent)
+}
+
+// UpdateWordlist renames a wordlist metadata record.
+func (s *Service) UpdateWordlist(id int64, name string) error {
+	return s.wordlists.UpdateWordlist(id, name)
+}
+
+// DeleteWordlist removes a wordlist and unlinks or deletes its file.
+func (s *Service) DeleteWordlist(id int64) error {
+	return s.wordlists.DeleteWordlist(id)
+}
+
+// ReadWordlistPage reads a slice of lines for the virtual editor.
+func (s *Service) ReadWordlistPage(id int64, offset int, limit int) (wordlists.WordlistPageDTO, error) {
+	return s.wordlists.ReadWordlistPage(id, offset, limit)
+}
+
+// SaveWordlistContent saves new content to a wordlist atomically.
+func (s *Service) SaveWordlistContent(id int64, content string) error {
+	return s.wordlists.SaveWordlistContent(id, content)
+}
+
+// ImportWordlistFromPath copies an external file into the app wordlists store.
+func (s *Service) ImportWordlistFromPath(sourcePath string) (*wordlists.WordlistDTO, error) {
+	return s.wordlists.ImportWordlistFromPath(sourcePath)
+}
+
+// LinkWordlistPath links an external wordlist file in place without copying.
+func (s *Service) LinkWordlistPath(sourcePath string) (*wordlists.WordlistDTO, error) {
+	return s.wordlists.LinkWordlistPath(sourcePath)
+}
+
+// RelocateWordlist updates the file location of a linked wordlist.
+func (s *Service) RelocateWordlist(id int64, newPath string) error {
+	return s.wordlists.RelocateWordlist(id, newPath)
+}
+
+// GetWordlistStats computes analytical metrics for a wordlist.
+func (s *Service) GetWordlistStats(id int64) (*wordlists.WordlistStatsDTO, error) {
+	return s.wordlists.GetWordlistStats(id)
+}
+
+// ExportWordlist exports a wordlist to a destination file.
+func (s *Service) ExportWordlist(id int64, targetPath string) error {
+	return s.wordlists.ExportWordlist(id, targetPath)
+}
+
+// SelectWordlistDialog displays a native file chooser dialog.
+func (s *Service) SelectWordlistDialog(title string) (string, error) {
+	s.wailsCtxMu.RLock()
+	ctx := s.wailsCtx
+	s.wailsCtxMu.RUnlock()
+
+	if ctx == nil {
+		return "", errors.New("native window context not available")
+	}
+
+	if title == "" {
+		title = "Select Wordlist File"
+	}
+
+	return wailsRuntime.OpenFileDialog(ctx, wailsRuntime.OpenDialogOptions{
+		Title: title,
+		Filters: []wailsRuntime.FileFilter{
+			{DisplayName: "Wordlists & Text Files (*.txt, *.dic, *.lst)", Pattern: "*.txt;*.dic;*.lst;*.*"},
+		},
+	})
 }

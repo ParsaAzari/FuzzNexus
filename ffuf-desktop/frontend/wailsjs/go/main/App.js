@@ -6,12 +6,24 @@ export function AddLiveFilter(arg1, arg2) {
   return window['go']['main']['App']['AddLiveFilter'](arg1, arg2);
 }
 
+export function CreateWordlist(arg1, arg2) {
+  return window['go']['main']['App']['CreateWordlist'](arg1, arg2);
+}
+
 export function DeleteFilterPreset(arg1) {
   return window['go']['main']['App']['DeleteFilterPreset'](arg1);
 }
 
+export function DeleteWordlist(arg1) {
+  return window['go']['main']['App']['DeleteWordlist'](arg1);
+}
+
 export function ExportResults(arg1, arg2, arg3) {
   return window['go']['main']['App']['ExportResults'](arg1, arg2, arg3);
+}
+
+export function ExportWordlist(arg1, arg2) {
+  return window['go']['main']['App']['ExportWordlist'](arg1, arg2);
 }
 
 export function GetFilterPresets() {
@@ -38,8 +50,32 @@ export function GetSessions(arg1) {
   return window['go']['main']['App']['GetSessions'](arg1);
 }
 
+export function GetWordlistStats(arg1) {
+  return window['go']['main']['App']['GetWordlistStats'](arg1);
+}
+
+export function ImportWordlistFromPath(arg1) {
+  return window['go']['main']['App']['ImportWordlistFromPath'](arg1);
+}
+
+export function LinkWordlistPath(arg1) {
+  return window['go']['main']['App']['LinkWordlistPath'](arg1);
+}
+
+export function ListWordlists() {
+  return window['go']['main']['App']['ListWordlists']();
+}
+
 export function PauseScan() {
   return window['go']['main']['App']['PauseScan']();
+}
+
+export function ReadWordlistPage(arg1, arg2, arg3) {
+  return window['go']['main']['App']['ReadWordlistPage'](arg1, arg2, arg3);
+}
+
+export function RelocateWordlist(arg1, arg2) {
+  return window['go']['main']['App']['RelocateWordlist'](arg1, arg2);
 }
 
 export function ResumeScan() {
@@ -48,6 +84,14 @@ export function ResumeScan() {
 
 export function SaveFilterPreset(arg1, arg2) {
   return window['go']['main']['App']['SaveFilterPreset'](arg1, arg2);
+}
+
+export function SaveWordlistContent(arg1, arg2) {
+  return window['go']['main']['App']['SaveWordlistContent'](arg1, arg2);
+}
+
+export function SelectWordlistDialog(arg1) {
+  return window['go']['main']['App']['SelectWordlistDialog'](arg1);
 }
 
 export function StartScan(arg1) {
@@ -60,4 +104,8 @@ export function StopScan() {
 
 export function UpdateRate(arg1) {
   return window['go']['main']['App']['UpdateRate'](arg1);
+}
+
+export function UpdateWordlist(arg1, arg2) {
+  return window['go']['main']['App']['UpdateWordlist'](arg1, arg2);
 }

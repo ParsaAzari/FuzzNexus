@@ -7,11 +7,12 @@
   import Inspector from './lib/components/Inspector.svelte';
   import SplitPane from './lib/components/SplitPane.svelte';
   import AnalyticsDashboard from './lib/components/AnalyticsDashboard.svelte';
+  import WordlistManager from './lib/components/WordlistManager.svelte';
   import { scanStore } from './lib/stores/scan.svelte';
   import { resultsStore } from './lib/stores/results.svelte';
   import { ExportResults } from '../wailsjs/go/main/App';
 
-  type ViewMode = 'grid' | 'analytics';
+  type ViewMode = 'grid' | 'analytics' | 'wordlists';
   let activeView = $state<ViewMode>('grid');
 
   let selectedItem = $derived(resultsStore.selectedItem);
@@ -64,8 +65,10 @@
       {:else}
         <VirtualGrid />
       {/if}
-    {:else}
+    {:else if activeView === 'analytics'}
       <AnalyticsDashboard />
+    {:else if activeView === 'wordlists'}
+      <WordlistManager onSelectForScan={() => (activeView = 'grid')} />
     {/if}
   </main>
 

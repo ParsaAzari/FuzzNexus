@@ -5,8 +5,8 @@
   import Icon from './Icon.svelte';
 
   interface Props {
-    activeView?: 'grid' | 'analytics';
-    onViewChange?: (view: 'grid' | 'analytics') => void;
+    activeView?: 'grid' | 'analytics' | 'wordlists';
+    onViewChange?: (view: 'grid' | 'analytics' | 'wordlists') => void;
   }
 
   let { activeView = 'grid', onViewChange }: Props = $props();
@@ -72,6 +72,13 @@
         onclick={() => onViewChange?.('analytics')}
       >
         Analytics
+      </button>
+      <button
+        class="picker-btn"
+        class:active={activeView === 'wordlists'}
+        onclick={() => onViewChange?.('wordlists')}
+      >
+        Wordlists
       </button>
     </div>
 

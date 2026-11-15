@@ -9,6 +9,7 @@ import (
 	"ffuf-desktop/internal/blobs"
 	"ffuf-desktop/internal/bridge"
 	"ffuf-desktop/internal/store"
+	"ffuf-desktop/internal/wordlists"
 )
 
 // App struct manages Wails lifecycle and delegates core actions to the bridge Service.
@@ -147,4 +148,88 @@ func (a *App) DeleteFilterPreset(name string) error {
 		return errors.New("bridge service is not available")
 	}
 	return a.service.DeleteFilterPreset(name)
+}
+
+func (a *App) ListWordlists() ([]wordlists.WordlistDTO, error) {
+	if a.service == nil {
+		return nil, errors.New("bridge service is not available")
+	}
+	return a.service.ListWordlists()
+}
+
+func (a *App) CreateWordlist(name, initialContent string) (*wordlists.WordlistDTO, error) {
+	if a.service == nil {
+		return nil, errors.New("bridge service is not available")
+	}
+	return a.service.CreateWordlist(name, initialContent)
+}
+
+func (a *App) UpdateWordlist(id int64, name string) error {
+	if a.service == nil {
+		return errors.New("bridge service is not available")
+	}
+	return a.service.UpdateWordlist(id, name)
+}
+
+func (a *App) DeleteWordlist(id int64) error {
+	if a.service == nil {
+		return errors.New("bridge service is not available")
+	}
+	return a.service.DeleteWordlist(id)
+}
+
+func (a *App) ReadWordlistPage(id int64, offset int, limit int) (wordlists.WordlistPageDTO, error) {
+	if a.service == nil {
+		return wordlists.WordlistPageDTO{}, errors.New("bridge service is not available")
+	}
+	return a.service.ReadWordlistPage(id, offset, limit)
+}
+
+func (a *App) SaveWordlistContent(id int64, content string) error {
+	if a.service == nil {
+		return errors.New("bridge service is not available")
+	}
+	return a.service.SaveWordlistContent(id, content)
+}
+
+func (a *App) ImportWordlistFromPath(sourcePath string) (*wordlists.WordlistDTO, error) {
+	if a.service == nil {
+		return nil, errors.New("bridge service is not available")
+	}
+	return a.service.ImportWordlistFromPath(sourcePath)
+}
+
+func (a *App) LinkWordlistPath(sourcePath string) (*wordlists.WordlistDTO, error) {
+	if a.service == nil {
+		return nil, errors.New("bridge service is not available")
+	}
+	return a.service.LinkWordlistPath(sourcePath)
+}
+
+func (a *App) RelocateWordlist(id int64, newPath string) error {
+	if a.service == nil {
+		return errors.New("bridge service is not available")
+	}
+	return a.service.RelocateWordlist(id, newPath)
+}
+
+func (a *App) GetWordlistStats(id int64) (*wordlists.WordlistStatsDTO, error) {
+	if a.service == nil {
+		return nil, errors.New("bridge service is not available")
+	}
+	return a.service.GetWordlistStats(id)
+}
+
+func (a *App) ExportWordlist(id int64, targetPath string) error {
+	if a.service == nil {
+		return errors.New("bridge service is not available")
+	}
+	return a.service.ExportWordlist(id, targetPath)
+}
+
+func (a *App) SelectWordlistDialog(title string) (string, error) {
+	if a.service == nil {
+		return "", errors.New("bridge service is not available")
+	}
+	return a.service.SelectWordlistDialog(title)
 }

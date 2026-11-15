@@ -1,4 +1,4 @@
-import type { blobs, bridge, output, store } from '../../wailsjs/go/models';
+import type { blobs, bridge, output, store, wordlists } from '../../wailsjs/go/models';
 
 export type ResultDTO = output.ResultDTO;
 export type ScanRequestDTO = bridge.ScanRequestDTO;
@@ -6,6 +6,9 @@ export type ResultsPageDTO = bridge.ResultsPageDTO;
 export type FilteredResultsPageDTO = bridge.FilteredResultsPageDTO;
 export type PayloadDTO = blobs.PayloadDTO;
 export type SessionDTO = store.SessionDTO;
+export type WordlistDTO = wordlists.WordlistDTO;
+export type WordlistPageDTO = wordlists.WordlistPageDTO;
+export type WordlistStatsDTO = wordlists.WordlistStatsDTO;
 export interface FilterRule {
   id: string;
   field: string;

@@ -650,3 +650,8 @@ func (s *Store) DeleteFilterPreset(name string) error {
 	_, err := s.writer.Exec(`DELETE FROM filter_presets WHERE name = ?`, name)
 	return err
 }
+
+// WriterDB exposes the underlying single-writer SQLite connection.
+func (s *Store) WriterDB() *sql.DB {
+	return s.writer
+}
