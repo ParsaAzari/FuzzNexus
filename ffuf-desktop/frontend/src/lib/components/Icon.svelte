@@ -45,7 +45,10 @@
     Redo2,
     FolderOpen,
     Eye,
-    EyeOff
+    EyeOff,
+    Ellipsis,
+    PanelLeftClose,
+    PanelLeftOpen
   } from '@lucide/svelte';
 
   const iconMap: Record<string, Component<any>> = {
@@ -97,6 +100,11 @@
     folder: FolderOpen,
     eye: Eye,
     'eye-off': EyeOff,
+    ellipsis: Ellipsis,
+    more: Ellipsis,
+    'panel-left': PanelLeftClose,
+    'panel-left-close': PanelLeftClose,
+    'panel-left-open': PanelLeftOpen,
 
     // Themes
     sun: Sun,

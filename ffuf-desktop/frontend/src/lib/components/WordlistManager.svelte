@@ -37,6 +37,8 @@
   let lineInputRefs = $state<Record<number, HTMLInputElement>>({});
   let sortDropdownOpen = $state<boolean>(false);
   let transformDropdownOpen = $state<boolean>(false);
+  let moreDropdownOpen = $state<boolean>(false);
+  let sidebarCollapsed = $state<boolean>(false);
   let selectedLineIndices = $state<Set<number>>(new Set());
   let isDirty = $state<boolean>(false);
   let pageOffset = $state<number>(0);
@@ -77,6 +79,7 @@
     if (!target.closest('.dropdown-wrapper')) {
       sortDropdownOpen = false;
       transformDropdownOpen = false;
+      moreDropdownOpen = false;
     }
   }
 
@@ -578,6 +581,21 @@
       return;
     }
 
+    if (e.key === 'Escape') {
+      if (sortDropdownOpen || transformDropdownOpen || moreDropdownOpen) {
+        sortDropdownOpen = false;
+        transformDropdownOpen = false;
+        moreDropdownOpen = false;
+        return;
+      }
+    }
+
+    if (isMeta && (e.key === '\\' || e.key.toLowerCase() === 'b')) {
+      e.preventDefault();
+      sidebarCollapsed = !sidebarCollapsed;
+      return;
+    }
+
     if (e.altKey && e.key === 'ArrowRight') {
       e.preventDefault();
       handlePageNav(pageOffset + pageSize);
@@ -640,11 +658,24 @@
 
 <svelte:window onkeydown={handleKeyDown} onclick={handleClickOutside} />
 
-<div class="wordlist-manager select-none">
+<div class="wordlist-manager select-none" class:sidebar-is-collapsed={sidebarCollapsed}>
   <!-- Left Column: Wordlist Library -->
-  <aside class="sidebar-library">
-    <div class="sidebar-header">
-      <div class="search-wrap">
+  {#if !sidebarCollapsed}
+    <aside class="sidebar-library">
+      <div class="sidebar-header">
+        <div class="sidebar-title-bar">
+          <span class="sidebar-heading">Wordlists</span>
+          <button
+            type="button"
+            class="btn-icon-toggle"
+            onclick={() => (sidebarCollapsed = true)}
+            title="Collapse Library (Cmd+\)"
+            aria-label="Collapse Library"
+          >
+            <Icon name="panel-left-close" size={14} />
+          </button>
+        </div>
+        <div class="search-wrap">
         <Icon name="search" size={13} class="search-icon" />
         <input
           bind:this={searchInputRef}
@@ -792,6 +823,19 @@
       {/if}
     </div>
   </aside>
+  {:else}
+    <div class="sidebar-collapsed-strip">
+      <button
+        type="button"
+        class="btn-icon-toggle"
+        onclick={() => (sidebarCollapsed = false)}
+        title="Expand Library (Cmd+\)"
+        aria-label="Expand Library"
+      >
+        <Icon name="panel-left-open" size={15} />
+      </button>
+    </div>
+  {/if}
 
   <!-- Right Column: Virtualized Editor & Operations -->
   <main class="editor-pane">
@@ -876,7 +920,7 @@
       <!-- Editor Toolbar (Transformations & Pagination) -->
       <div class="editor-toolbar">
         <div class="tools-group">
-          <!-- View Segmented Control -->
+          <!-- View Segmented Control (Pinned) -->
           <div class="segmented-control" role="group" aria-label="Editor View Mode">
             <button
               type="button"
@@ -900,7 +944,7 @@
             </button>
           </div>
 
-          <!-- Selection & Copy Group -->
+          <!-- Selection & Copy Group (Pinned) -->
           <div class="btn-group">
             <button
               type="button"
@@ -934,53 +978,203 @@
             {/if}
           </div>
 
-          <!-- Hygiene Group -->
-          <div class="btn-group">
-            <button
-              type="button"
-              class="tool-btn btn-tool-clean"
-              onclick={handleCleanWordlist}
-              title="Verify and auto-clean blank lines (Shift+Cmd+C)"
-            >
-              <Icon name="check" size={11} />
-              <span>Clean Blanks</span>
-            </button>
-            <button
-              type="button"
-              class="tool-btn"
-              onclick={applyDeduplicate}
-              title="Remove duplicate lines (Shift+Cmd+D)"
-            >
-              <Icon name="sliders" size={11} />
-              <span>Dedupe</span>
-            </button>
+          <!-- Extended Tools (Hidden in Compact Mode via @container query) -->
+          <div class="tools-extended">
+            <!-- Hygiene Group -->
+            <div class="btn-group">
+              <button
+                type="button"
+                class="tool-btn btn-tool-clean"
+                onclick={handleCleanWordlist}
+                title="Verify and auto-clean blank lines (Shift+Cmd+C)"
+              >
+                <Icon name="check" size={11} />
+                <span>Clean<span class="btn-label-long"> Blanks</span></span>
+              </button>
+              <button
+                type="button"
+                class="tool-btn"
+                onclick={applyDeduplicate}
+                title="Remove duplicate lines (Shift+Cmd+D)"
+              >
+                <Icon name="sliders" size={11} />
+                <span>Dedupe</span>
+              </button>
+            </div>
+
+            <!-- Sort Dropdown -->
+            <div class="dropdown-wrapper">
+              <button
+                type="button"
+                class="tool-btn dropdown-toggle"
+                class:dropdown-active={sortDropdownOpen}
+                onclick={(e) => {
+                  e.stopPropagation();
+                  sortDropdownOpen = !sortDropdownOpen;
+                  transformDropdownOpen = false;
+                  moreDropdownOpen = false;
+                }}
+                title="Sort lines alphabetically"
+              >
+                <Icon name="arrow-up-down" size={11} />
+                <span>Sort</span>
+                <Icon name="chevron-down" size={10} />
+              </button>
+              {#if sortDropdownOpen}
+                <div class="dropdown-menu">
+                  <button
+                    type="button"
+                    class="dropdown-item"
+                    onclick={() => {
+                      applySort(true);
+                      sortDropdownOpen = false;
+                    }}
+                  >
+                    <Icon name="arrow-up" size={11} />
+                    <span>Sort Ascending (A-Z)</span>
+                  </button>
+                  <button
+                    type="button"
+                    class="dropdown-item"
+                    onclick={() => {
+                      applySort(false);
+                      sortDropdownOpen = false;
+                    }}
+                  >
+                    <Icon name="arrow-down" size={11} />
+                    <span>Sort Descending (Z-A)</span>
+                  </button>
+                </div>
+              {/if}
+            </div>
+
+            <!-- Transform Dropdown -->
+            <div class="dropdown-wrapper">
+              <button
+                type="button"
+                class="tool-btn dropdown-toggle"
+                class:dropdown-active={transformDropdownOpen}
+                onclick={(e) => {
+                  e.stopPropagation();
+                  transformDropdownOpen = !transformDropdownOpen;
+                  sortDropdownOpen = false;
+                  moreDropdownOpen = false;
+                }}
+                title="Transform line text"
+              >
+                <Icon name="edit" size={11} />
+                <span>Transform</span>
+                <Icon name="chevron-down" size={10} />
+              </button>
+              {#if transformDropdownOpen}
+                <div class="dropdown-menu">
+                  <button
+                    type="button"
+                    class="dropdown-item"
+                    onclick={() => {
+                      applyTrim();
+                      transformDropdownOpen = false;
+                    }}
+                  >
+                    <span>Trim Whitespace</span>
+                  </button>
+                  <button
+                    type="button"
+                    class="dropdown-item"
+                    onclick={() => {
+                      applyCase(true);
+                      transformDropdownOpen = false;
+                    }}
+                  >
+                    <span>To Lowercase (lower)</span>
+                  </button>
+                  <button
+                    type="button"
+                    class="dropdown-item"
+                    onclick={() => {
+                      applyCase(false);
+                      transformDropdownOpen = false;
+                    }}
+                  >
+                    <span>To Uppercase (UPPER)</span>
+                  </button>
+                  <button
+                    type="button"
+                    class="dropdown-item"
+                    onclick={() => {
+                      applyStripEmpty();
+                      transformDropdownOpen = false;
+                    }}
+                  >
+                    <span>Strip Empty Lines</span>
+                  </button>
+                  <div class="dropdown-divider"></div>
+                  <button
+                    type="button"
+                    class="dropdown-item"
+                    onclick={() => {
+                      prefixSuffixModalOpen = true;
+                      transformDropdownOpen = false;
+                    }}
+                  >
+                    <span>Add Prefix / Suffix...</span>
+                  </button>
+                </div>
+              {/if}
+            </div>
           </div>
 
-          <!-- Sort Dropdown -->
-          <div class="dropdown-wrapper">
+          <!-- Apple HIG Overflow Menu (Visible in Compact Mode via @container query) -->
+          <div class="dropdown-wrapper tools-overflow">
             <button
               type="button"
               class="tool-btn dropdown-toggle"
-              class:dropdown-active={sortDropdownOpen}
+              class:dropdown-active={moreDropdownOpen}
               onclick={(e) => {
                 e.stopPropagation();
-                sortDropdownOpen = !sortDropdownOpen;
+                moreDropdownOpen = !moreDropdownOpen;
+                sortDropdownOpen = false;
                 transformDropdownOpen = false;
               }}
-              title="Sort lines alphabetically"
+              title="More Actions and Transformations"
             >
-              <Icon name="arrow-up-down" size={11} />
-              <span>Sort</span>
+              <Icon name="ellipsis" size={12} />
+              <span>More</span>
               <Icon name="chevron-down" size={10} />
             </button>
-            {#if sortDropdownOpen}
+            {#if moreDropdownOpen}
               <div class="dropdown-menu">
+                <div class="dropdown-section-title">Hygiene</div>
+                <button
+                  type="button"
+                  class="dropdown-item"
+                  onclick={() => {
+                    handleCleanWordlist();
+                    moreDropdownOpen = false;
+                  }}
+                >
+                  <Icon name="check" size={11} />
+                  <span>Clean Blank Lines</span>
+                </button>
+                <button
+                  type="button"
+                  class="dropdown-item"
+                  onclick={() => {
+                    applyDeduplicate();
+                    moreDropdownOpen = false;
+                  }}
+                >
+                  <Icon name="sliders" size={11} />
+                  <span>Deduplicate Lines</span>
+                </button>
+                <div class="dropdown-divider"></div>
+                <div class="dropdown-section-title">Sort</div>
                 <button
                   type="button"
                   class="dropdown-item"
                   onclick={() => {
                     applySort(true);
-                    sortDropdownOpen = false;
+                    moreDropdownOpen = false;
                   }}
                 >
                   <Icon name="arrow-up" size={11} />
@@ -991,41 +1185,20 @@
                   class="dropdown-item"
                   onclick={() => {
                     applySort(false);
-                    sortDropdownOpen = false;
+                    moreDropdownOpen = false;
                   }}
                 >
                   <Icon name="arrow-down" size={11} />
                   <span>Sort Descending (Z-A)</span>
                 </button>
-              </div>
-            {/if}
-          </div>
-
-          <!-- Transform Dropdown -->
-          <div class="dropdown-wrapper">
-            <button
-              type="button"
-              class="tool-btn dropdown-toggle"
-              class:dropdown-active={transformDropdownOpen}
-              onclick={(e) => {
-                e.stopPropagation();
-                transformDropdownOpen = !transformDropdownOpen;
-                sortDropdownOpen = false;
-              }}
-              title="Transform line text"
-            >
-              <Icon name="edit" size={11} />
-              <span>Transform</span>
-              <Icon name="chevron-down" size={10} />
-            </button>
-            {#if transformDropdownOpen}
-              <div class="dropdown-menu">
+                <div class="dropdown-divider"></div>
+                <div class="dropdown-section-title">Transform</div>
                 <button
                   type="button"
                   class="dropdown-item"
                   onclick={() => {
                     applyTrim();
-                    transformDropdownOpen = false;
+                    moreDropdownOpen = false;
                   }}
                 >
                   <span>Trim Whitespace</span>
@@ -1035,7 +1208,7 @@
                   class="dropdown-item"
                   onclick={() => {
                     applyCase(true);
-                    transformDropdownOpen = false;
+                    moreDropdownOpen = false;
                   }}
                 >
                   <span>To Lowercase (lower)</span>
@@ -1045,7 +1218,7 @@
                   class="dropdown-item"
                   onclick={() => {
                     applyCase(false);
-                    transformDropdownOpen = false;
+                    moreDropdownOpen = false;
                   }}
                 >
                   <span>To Uppercase (UPPER)</span>
@@ -1055,7 +1228,7 @@
                   class="dropdown-item"
                   onclick={() => {
                     applyStripEmpty();
-                    transformDropdownOpen = false;
+                    moreDropdownOpen = false;
                   }}
                 >
                   <span>Strip Empty Lines</span>
@@ -1066,7 +1239,7 @@
                   class="dropdown-item"
                   onclick={() => {
                     prefixSuffixModalOpen = true;
-                    transformDropdownOpen = false;
+                    moreDropdownOpen = false;
                   }}
                 >
                   <span>Add Prefix / Suffix...</span>
@@ -1088,7 +1261,12 @@
             Prev
           </button>
           <span class="page-indicator">
-            {totalLines > 0 ? pageOffset + 1 : 0} - {Math.min(pageOffset + pageSize, totalLines)} of {totalLines.toLocaleString()}
+            <span class="page-indicator-full">
+              {totalLines > 0 ? pageOffset + 1 : 0} - {Math.min(pageOffset + pageSize, totalLines)} of {totalLines.toLocaleString()}
+            </span>
+            <span class="page-indicator-compact">
+              {totalLines > 0 ? pageOffset + 1 : 0}-{Math.min(pageOffset + pageSize, totalLines)} / {totalLines >= 1000 ? `${(totalLines / 1000).toFixed(1)}k` : totalLines}
+            </span>
           </span>
           <button
             type="button"
@@ -1434,12 +1612,58 @@
   }
 
   .sidebar-library {
-    width: 290px;
+    width: 270px;
     background-color: var(--bg-subtle);
     border-right: 1px solid var(--border);
     display: flex;
     flex-direction: column;
     flex-shrink: 0;
+  }
+
+  .sidebar-collapsed-strip {
+    width: 36px;
+    background-color: var(--bg-subtle);
+    border-right: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding-top: 8px;
+    flex-shrink: 0;
+  }
+
+  .sidebar-title-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 2px 2px 2px;
+  }
+
+  .sidebar-heading {
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+
+  .btn-icon-toggle {
+    width: 24px;
+    height: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: none;
+    border: 1px solid transparent;
+    border-radius: 4px;
+    color: var(--text-secondary);
+    cursor: pointer;
+    transition: all 0.1s ease;
+  }
+
+  .btn-icon-toggle:hover {
+    background-color: var(--surface-hover);
+    color: var(--text);
+    border-color: var(--border);
   }
 
   .sidebar-header {
@@ -1692,6 +1916,8 @@
     flex-direction: column;
     min-width: 0;
     background-color: var(--surface);
+    container-type: inline-size;
+    container-name: editor;
   }
 
   .empty-editor,
@@ -1868,6 +2094,13 @@
     z-index: 20;
     white-space: nowrap;
     user-select: none;
+    overflow-x: auto;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+  }
+
+  .editor-toolbar::-webkit-scrollbar {
+    display: none;
   }
 
   .tools-group {
@@ -1875,6 +2108,25 @@
     align-items: center;
     gap: 6px;
     flex-shrink: 0;
+  }
+
+  .tools-extended {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .tools-overflow {
+    display: none;
+  }
+
+  .dropdown-section-title {
+    font-size: 10px;
+    font-weight: 600;
+    color: var(--text-secondary);
+    padding: 4px 8px 2px 8px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
   }
 
   .segmented-control {
@@ -2057,6 +2309,39 @@
     color: var(--text-secondary);
     font-size: 10.5px;
     white-space: nowrap;
+  }
+
+  .page-indicator-compact {
+    display: none;
+  }
+
+  /* Container Queries for Adaptive Toolbar */
+  @container editor (max-width: 760px) {
+    .btn-label-long {
+      display: none !important;
+    }
+  }
+
+  @container editor (max-width: 620px) {
+    .tools-extended {
+      display: none !important;
+    }
+
+    .tools-overflow {
+      display: inline-flex !important;
+    }
+
+    .btn-label-long {
+      display: none !important;
+    }
+
+    .page-indicator-full {
+      display: none !important;
+    }
+
+    .page-indicator-compact {
+      display: inline !important;
+    }
   }
 
   .editor-container {
