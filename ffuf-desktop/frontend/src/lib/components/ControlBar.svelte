@@ -1,14 +1,39 @@
 <script lang="ts">
   import { scanStore } from '../stores/scan.svelte';
   import { wordlistsStore } from '../stores/wordlists.svelte';
+  import { filtersStore } from '../stores/filters.svelte';
+  import { toastStore } from '../stores/toast.svelte';
   import Icon from './Icon.svelte';
 
   let liveFilterType = $state<'status' | 'size' | 'words' | 'lines'>('status');
   let liveFilterValue = $state<string>('');
 
-  function handleAddLiveFilter() {
-    if (!liveFilterValue.trim()) return;
-    scanStore.addFilter(liveFilterType, liveFilterValue.trim());
+  async function handleAddLiveFilter() {
+    const val = liveFilterValue.trim();
+    if (!val) return;
+
+    // In ffuf scanning, filters exclude matching responses (e.g. -fc 404 drops 404s)
+    const isScanActive = scanStore.state === 'Running' || scanStore.state === 'Paused';
+
+    // 1. Add rule to Dual-Layer Filter Store so it immediately creates a chip and filters UI results
+    filtersStore.addRule({
+      field: liveFilterType,
+      operator: '!=',
+      value: val,
+      enabled: true,
+      layer: isScanActive ? 'both' : 'view'
+    });
+
+    // 2. If scan engine is actively executing in background, forward to Go engine
+    if (isScanActive) {
+      try {
+        await scanStore.addFilter(liveFilterType, val);
+      } catch (err: any) {
+        console.error('Failed to forward live filter to engine:', err);
+      }
+    }
+
+    toastStore.success(`Added exclusion filter: ${liveFilterType} != ${val}`);
     liveFilterValue = '';
   }
 
@@ -169,25 +194,26 @@
       </div>
     </div>
 
-    <!-- Live Filter Adder -->
-    <div class="live-filter-group">
-      <span class="filter-icon">
+    <!-- Live Engine / Quick Exclude Filter -->
+    <div class="live-filter-group" title="Quickly exclude responses matching this status, size, words, or lines">
+      <span class="filter-icon" title="Quick Exclude Filter (Applies to UI results and scan engine)">
         <Icon name="zap" size={14} />
       </span>
-      <select bind:value={liveFilterType} class="filter-type-select">
-        <option value="status">Status</option>
-        <option value="size">Size</option>
-        <option value="words">Words</option>
-        <option value="lines">Lines</option>
+      <select bind:value={liveFilterType} class="filter-type-select font-mono" aria-label="Filter Field">
+        <option value="status">Status !=</option>
+        <option value="size">Size !=</option>
+        <option value="words">Words !=</option>
+        <option value="lines">Lines !=</option>
       </select>
       <input
         type="text"
-        placeholder="Filter value (e.g. 404)"
+        placeholder="Exclude (e.g. 404)"
         bind:value={liveFilterValue}
         onkeydown={(e) => e.key === 'Enter' && handleAddLiveFilter()}
         class="filter-input font-mono"
+        aria-label="Filter Value"
       />
-      <button class="btn btn-subtle" onclick={handleAddLiveFilter}>
+      <button class="btn btn-subtle" onclick={handleAddLiveFilter} title="Add exclusion filter rule (+Filter)">
         + Filter
       </button>
     </div>

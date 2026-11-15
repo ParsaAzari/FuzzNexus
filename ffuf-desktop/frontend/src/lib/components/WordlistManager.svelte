@@ -31,6 +31,10 @@
 
   // Editor & navigation state
   let editorLines = $state<string[]>([]);
+  let editorMode = $state<'lines' | 'raw'>('lines');
+  let rawTextContent = $state<string>('');
+  let rawTextareaRef = $state<HTMLTextAreaElement | null>(null);
+  let lineInputRefs = $state<Record<number, HTMLInputElement>>({});
   let isDirty = $state<boolean>(false);
   let pageOffset = $state<number>(0);
   const pageSize = 100;
@@ -52,6 +56,7 @@
   $effect(() => {
     if (wordlistsStore.currentPage.lines) {
       editorLines = [...wordlistsStore.currentPage.lines];
+      rawTextContent = editorLines.join('\n');
       isDirty = false;
     }
   });
@@ -65,7 +70,111 @@
 
   function handleLineChange(index: number, value: string) {
     editorLines[index] = value;
+    rawTextContent = editorLines.join('\n');
     isDirty = true;
+  }
+
+  function handleRawTextChange(val: string) {
+    rawTextContent = val;
+    editorLines = val.split('\n');
+    isDirty = true;
+  }
+
+  function toggleEditorMode() {
+    if (editorMode === 'lines') {
+      rawTextContent = editorLines.join('\n');
+      editorMode = 'raw';
+      toastStore.info('Raw Editor Mode: Cmd+A selects all lines');
+    } else {
+      editorLines = rawTextContent.split('\n');
+      editorMode = 'lines';
+      toastStore.info('Line-by-Line Mode active');
+    }
+  }
+
+  function switchToRawModeAndSelectAll() {
+    rawTextContent = editorLines.join('\n');
+    editorMode = 'raw';
+    setTimeout(() => {
+      if (rawTextareaRef) {
+        rawTextareaRef.focus();
+        rawTextareaRef.select();
+      }
+    }, 50);
+  }
+
+  async function copyAllLines() {
+    const text = editorMode === 'raw' ? rawTextContent : editorLines.join('\n');
+    try {
+      await navigator.clipboard.writeText(text);
+      toastStore.success(`Copied ${editorLines.length} lines to clipboard`);
+    } catch {
+      toastStore.error('Failed to copy to clipboard');
+    }
+  }
+
+  function handleLineInputKeyDown(e: KeyboardEvent, idx: number) {
+    const isMeta = e.metaKey || e.ctrlKey;
+
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      editorLines.splice(idx + 1, 0, '');
+      rawTextContent = editorLines.join('\n');
+      isDirty = true;
+      setTimeout(() => {
+        lineInputRefs[idx + 1]?.focus();
+      }, 0);
+      return;
+    }
+
+    if (e.key === 'Backspace' && editorLines[idx] === '' && editorLines.length > 1) {
+      e.preventDefault();
+      editorLines.splice(idx, 1);
+      rawTextContent = editorLines.join('\n');
+      isDirty = true;
+      setTimeout(() => {
+        lineInputRefs[Math.max(0, idx - 1)]?.focus();
+      }, 0);
+      return;
+    }
+
+    if (e.key === 'ArrowDown') {
+      if (idx < editorLines.length - 1) {
+        e.preventDefault();
+        lineInputRefs[idx + 1]?.focus();
+      }
+      return;
+    }
+
+    if (e.key === 'ArrowUp') {
+      if (idx > 0) {
+        e.preventDefault();
+        lineInputRefs[idx - 1]?.focus();
+      }
+      return;
+    }
+
+    // Shift+Cmd+A: Switch to Raw mode with all text selected
+    if (isMeta && e.shiftKey && e.key.toLowerCase() === 'a') {
+      e.preventDefault();
+      switchToRawModeAndSelectAll();
+      return;
+    }
+  }
+
+  function handleLinePaste(e: ClipboardEvent, idx: number) {
+    const text = e.clipboardData?.getData('text');
+    if (!text || (!text.includes('\n') && !text.includes('\r'))) {
+      return; // Single-line paste handled normally
+    }
+    e.preventDefault();
+    const pastedLines = text.split(/\r?\n/).map((l) => l.trim()).filter((l) => l.length > 0);
+    if (!pastedLines.length) return;
+
+    editorLines.splice(idx, 1, ...pastedLines);
+    rawTextContent = editorLines.join('\n');
+    isDirty = true;
+    toastStore.success(`Pasted ${pastedLines.length} lines`);
   }
 
   async function handleSave() {
@@ -343,6 +452,12 @@
     if (isMeta && e.key.toLowerCase() === 'l') {
       e.preventDefault();
       wordlistsStore.openNativeFilePicker('link');
+      return;
+    }
+
+    if (isMeta && e.key.toLowerCase() === 'e') {
+      e.preventDefault();
+      toggleEditorMode();
       return;
     }
 
@@ -674,6 +789,30 @@
       <!-- Editor Toolbar (Transformations & Pagination) -->
       <div class="editor-toolbar">
         <div class="tools-group">
+          <button
+            class="tool-btn"
+            class:active-mode={editorMode === 'raw'}
+            onclick={toggleEditorMode}
+            title="Toggle between Line-by-Line and Raw Multiline Mode (Cmd+E)"
+          >
+            <Icon name={editorMode === 'raw' ? 'layers' : 'file-text'} size={12} />
+            <span>{editorMode === 'raw' ? 'Lines View' : 'Raw View'}</span>
+          </button>
+          <button
+            class="tool-btn"
+            onclick={switchToRawModeAndSelectAll}
+            title="Open Raw Mode with all lines selected (Shift+Cmd+A)"
+          >
+            <span>Select All</span>
+          </button>
+          <button
+            class="tool-btn"
+            onclick={copyAllLines}
+            title="Copy all lines on this page to clipboard"
+          >
+            <Icon name="copy" size={12} />
+            <span>Copy All</span>
+          </button>
           <button class="tool-btn btn-tool-clean" onclick={handleCleanWordlist} title="Verify and clean all blank lines (Shift+Cmd+C)">
             <Icon name="check" size={12} />
             <span>Clean Blanks</span>
@@ -731,24 +870,48 @@
         </div>
       </div>
 
-      <!-- Virtualized Line-by-Line Editor -->
-      <div class="editor-container">
-        <div class="lines-gutter font-mono select-none">
-          {#each editorLines as _, idx}
-            <div class="gutter-number">{pageOffset + idx + 1}</div>
-          {/each}
+      {#if editorMode === 'lines'}
+        <!-- Virtualized Line-by-Line Editor -->
+        <div class="editor-container">
+          <div class="lines-gutter font-mono select-none">
+            {#each editorLines as _, idx}
+              <div class="gutter-number">{pageOffset + idx + 1}</div>
+            {/each}
+          </div>
+          <div class="lines-content font-mono select-text">
+            {#each editorLines as line, idx}
+              <input
+                bind:this={lineInputRefs[idx]}
+                type="text"
+                class="line-input"
+                value={line}
+                oninput={(e) => handleLineChange(idx, (e.currentTarget as HTMLInputElement).value)}
+                onkeydown={(e) => handleLineInputKeyDown(e, idx)}
+                onpaste={(e) => handleLinePaste(e, idx)}
+              />
+            {/each}
+          </div>
         </div>
-        <div class="lines-content font-mono select-text">
-          {#each editorLines as line, idx}
-            <input
-              type="text"
-              class="line-input"
-              value={line}
-              oninput={(e) => handleLineChange(idx, (e.currentTarget as HTMLInputElement).value)}
-            />
-          {/each}
+      {:else}
+        <!-- Raw Multiline / Bulk Editor (Cmd+A selects all lines) -->
+        <div class="editor-container raw-editor-container">
+          <div class="lines-gutter font-mono select-none">
+            {#each editorLines as _, idx}
+              <div class="gutter-number">{pageOffset + idx + 1}</div>
+            {/each}
+          </div>
+          <div class="raw-textarea-wrap">
+            <textarea
+              bind:this={rawTextareaRef}
+              class="raw-textarea font-mono select-text"
+              value={rawTextContent}
+              oninput={(e) => handleRawTextChange((e.currentTarget as HTMLTextAreaElement).value)}
+              placeholder="Enter wordlist payloads, one per line..."
+              spellcheck="false"
+            ></textarea>
+          </div>
         </div>
-      </div>
+      {/if}
 
       <!-- Editor Footer Action Bar -->
       <footer class="editor-footer">
@@ -917,6 +1080,9 @@
           <div class="shortcut-row"><span class="shortcut-key">Shift+Cmd+D</span><span class="shortcut-desc">Deduplicate lines</span></div>
           <div class="shortcut-row"><span class="shortcut-key">Shift+Cmd+S</span><span class="shortcut-desc">Sort lines alphabetically</span></div>
           <div class="shortcut-row"><span class="shortcut-key">Shift+Cmd+T</span><span class="shortcut-desc">Trim whitespace</span></div>
+          <div class="shortcut-row"><span class="shortcut-key">Cmd+E</span><span class="shortcut-desc">Toggle Lines / Raw Mode</span></div>
+          <div class="shortcut-row"><span class="shortcut-key">Shift+Cmd+A</span><span class="shortcut-desc">Select all lines (Raw)</span></div>
+          <div class="shortcut-row"><span class="shortcut-key">Enter / Backspace</span><span class="shortcut-desc">Add / remove line</span></div>
           <div class="shortcut-row"><span class="shortcut-key">Shift+Cmd+C</span><span class="shortcut-desc">Auto-clean blank lines</span></div>
           <div class="shortcut-row"><span class="shortcut-key">?</span><span class="shortcut-desc">Toggle this shortcuts list</span></div>
         </div>
@@ -1553,6 +1719,48 @@
 
   .line-input:focus {
     background-color: rgba(0, 122, 255, 0.08);
+  }
+
+  .raw-editor-container {
+    position: relative;
+    display: flex;
+    flex: 1;
+    overflow: hidden;
+  }
+
+  .raw-textarea-wrap {
+    flex: 1;
+    display: flex;
+    overflow: hidden;
+  }
+
+  .raw-textarea {
+    flex: 1;
+    width: 100%;
+    height: 100%;
+    padding: 6px 12px;
+    background-color: var(--surface);
+    color: var(--text);
+    border: none;
+    outline: none;
+    resize: none;
+    font-size: 12px;
+    line-height: 24px;
+    white-space: pre;
+    overflow-y: auto;
+    overflow-x: auto;
+    box-sizing: border-box;
+  }
+
+  .raw-textarea:focus {
+    background-color: rgba(0, 122, 255, 0.03);
+  }
+
+  .tool-btn.active-mode {
+    background-color: rgba(0, 122, 255, 0.15);
+    color: var(--accent);
+    border-color: var(--accent);
+    font-weight: 600;
   }
 
   .editor-footer {
