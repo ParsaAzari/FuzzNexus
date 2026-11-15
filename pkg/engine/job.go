@@ -395,11 +395,21 @@ func (j *Job) interruptMonitor() {
 	sigChan := make(chan os.Signal, 2)
 	signal.Notify(sigChan, os.Interrupt, syscall.SIGTERM)
 	go func() {
-		for range sigChan {
-			j.setError("Caught keyboard interrupt (Ctrl-C)\n")
-			// Stop reopens the pause gate itself, so a worker blocked at a
-			// checkpoint wakes and observes the stop.
-			j.Stop()
+		defer signal.Stop(sigChan)
+		for {
+			select {
+			case <-j.Config.Context.Done():
+				return
+			case _, ok := <-sigChan:
+				if !ok {
+					return
+				}
+				j.setError("Caught keyboard interrupt (Ctrl-C)\n")
+				// Stop reopens the pause gate itself, so a worker blocked at a
+				// checkpoint wakes and observes the stop.
+				j.Stop()
+				return
+			}
 		}
 	}()
 }
