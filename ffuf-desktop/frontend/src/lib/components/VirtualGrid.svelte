@@ -1,6 +1,7 @@
 <script lang="ts">
   import { resultsStore } from '../stores/results.svelte';
   import type { ResultDTO, SortField } from '../types';
+  import Icon from './Icon.svelte';
 
   const ROW_HEIGHT = 32;
   const OVERSCAN = 15;
@@ -62,6 +63,14 @@
     return 'badge-err';
   }
 
+  function getStatusIconName(status: number): string {
+    if (status >= 200 && status < 300) return 'status-2xx';
+    if (status >= 300 && status < 400) return 'status-3xx';
+    if (status >= 400 && status < 500) return 'status-4xx';
+    if (status >= 500) return 'status-5xx';
+    return 'status-err';
+  }
+
   function getFirstInputValue(inputs?: Record<string, string>): string {
     if (!inputs) return '';
     const keys = Object.keys(inputs);
@@ -81,29 +90,50 @@
 >
   <!-- Table Header -->
   <div class="grid-header" role="row">
-    <button class="col col-id header-btn" onclick={() => resultsStore.setSort('id')}>
-      # {resultsStore.sortField === 'id' ? (resultsStore.sortDirection === 'asc' ? '↑' : '↓') : ''}
+    <button class="col col-id header-btn" onclick={() => resultsStore.setSort('id')} aria-label="Sort by ID">
+      <span>#</span>
+      {#if resultsStore.sortField === 'id'}
+        <Icon name={resultsStore.sortDirection === 'asc' ? 'arrow-up' : 'arrow-down'} size={12} />
+      {/if}
     </button>
-    <button class="col col-status header-btn" onclick={() => resultsStore.setSort('status')}>
-      Status {resultsStore.sortField === 'status' ? (resultsStore.sortDirection === 'asc' ? '↑' : '↓') : ''}
+    <button class="col col-status header-btn" onclick={() => resultsStore.setSort('status')} aria-label="Sort by Status">
+      <span>Status</span>
+      {#if resultsStore.sortField === 'status'}
+        <Icon name={resultsStore.sortDirection === 'asc' ? 'arrow-up' : 'arrow-down'} size={12} />
+      {/if}
     </button>
     <button class="col col-payload header-btn">
-      Payload (FUZZ)
+      <span>Payload (FUZZ)</span>
     </button>
-    <button class="col col-url header-btn" onclick={() => resultsStore.setSort('url')}>
-      Target URL {resultsStore.sortField === 'url' ? (resultsStore.sortDirection === 'asc' ? '↑' : '↓') : ''}
+    <button class="col col-url header-btn" onclick={() => resultsStore.setSort('url')} aria-label="Sort by Target URL">
+      <span>Target URL</span>
+      {#if resultsStore.sortField === 'url'}
+        <Icon name={resultsStore.sortDirection === 'asc' ? 'arrow-up' : 'arrow-down'} size={12} />
+      {/if}
     </button>
-    <button class="col col-length header-btn" onclick={() => resultsStore.setSort('length')}>
-      Size {resultsStore.sortField === 'length' ? (resultsStore.sortDirection === 'asc' ? '↑' : '↓') : ''}
+    <button class="col col-length header-btn" onclick={() => resultsStore.setSort('length')} aria-label="Sort by Size">
+      <span>Size</span>
+      {#if resultsStore.sortField === 'length'}
+        <Icon name={resultsStore.sortDirection === 'asc' ? 'arrow-up' : 'arrow-down'} size={12} />
+      {/if}
     </button>
-    <button class="col col-words header-btn" onclick={() => resultsStore.setSort('words')}>
-      Words {resultsStore.sortField === 'words' ? (resultsStore.sortDirection === 'asc' ? '↑' : '↓') : ''}
+    <button class="col col-words header-btn" onclick={() => resultsStore.setSort('words')} aria-label="Sort by Words">
+      <span>Words</span>
+      {#if resultsStore.sortField === 'words'}
+        <Icon name={resultsStore.sortDirection === 'asc' ? 'arrow-up' : 'arrow-down'} size={12} />
+      {/if}
     </button>
-    <button class="col col-lines header-btn" onclick={() => resultsStore.setSort('lines')}>
-      Lines {resultsStore.sortField === 'lines' ? (resultsStore.sortDirection === 'asc' ? '↑' : '↓') : ''}
+    <button class="col col-lines header-btn" onclick={() => resultsStore.setSort('lines')} aria-label="Sort by Lines">
+      <span>Lines</span>
+      {#if resultsStore.sortField === 'lines'}
+        <Icon name={resultsStore.sortDirection === 'asc' ? 'arrow-up' : 'arrow-down'} size={12} />
+      {/if}
     </button>
-    <button class="col col-duration header-btn" onclick={() => resultsStore.setSort('duration')}>
-      Duration {resultsStore.sortField === 'duration' ? (resultsStore.sortDirection === 'asc' ? '↑' : '↓') : ''}
+    <button class="col col-duration header-btn" onclick={() => resultsStore.setSort('duration')} aria-label="Sort by Duration">
+      <span>Duration</span>
+      {#if resultsStore.sortField === 'duration'}
+        <Icon name={resultsStore.sortDirection === 'asc' ? 'arrow-up' : 'arrow-down'} size={12} />
+      {/if}
     </button>
   </div>
 
@@ -117,7 +147,9 @@
   >
     {#if totalCount === 0}
       <div class="empty-state">
-        <div class="empty-icon">🔍</div>
+        <div class="empty-icon">
+          <Icon name="search" size={40} />
+        </div>
         <div class="empty-title">No Scan Results</div>
         <div class="empty-sub">Start a fuzzing scan or adjust filters above to view real-time matches.</div>
       </div>
@@ -144,7 +176,8 @@
             <div class="col col-id font-mono">{row.id}</div>
             <div class="col col-status">
               <span class="status-badge font-mono {getStatusBadgeClass(row.status)}">
-                {row.status}
+                <Icon name={getStatusIconName(row.status)} size={11} />
+                <span>{row.status}</span>
               </span>
             </div>
             <div class="col col-payload font-mono payload-text" title={getFirstInputValue(row.inputs)}>
@@ -293,7 +326,9 @@
   }
 
   .status-badge {
-    display: inline-block;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
     padding: 1px 6px;
     border-radius: 4px;
     font-size: 11px;

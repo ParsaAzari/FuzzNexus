@@ -73,7 +73,7 @@
       </span>
       {#if selectedItem}
         <span class="selection-pill font-mono">
-          Selected #{selectedItem.id} ({selectedItem.status} • {selectedItem.length} bytes • {selectedItem.duration_ms}ms)
+          Selected #{selectedItem.id} ({selectedItem.status} <span class="sep-dot">&bull;</span> {selectedItem.length} bytes <span class="sep-dot">&bull;</span> {selectedItem.duration_ms}ms)
         </span>
       {/if}
       {#if exportMessage}

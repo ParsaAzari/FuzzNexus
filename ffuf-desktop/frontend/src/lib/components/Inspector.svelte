@@ -3,6 +3,7 @@
   import { scanStore } from '../stores/scan.svelte';
   import { GetResultPayload } from '../../../wailsjs/go/main/App';
   import type { PayloadDTO } from '../types';
+  import Icon from './Icon.svelte';
 
   type TabType = 'response' | 'request' | 'metadata';
   type ViewMode = 'raw' | 'preview';
@@ -80,7 +81,9 @@ ${body}
 <div class="inspector-wrapper select-none">
   {#if !selectedItem}
     <div class="empty-inspector">
-      <div class="empty-icon">📋</div>
+      <div class="empty-icon">
+        <Icon name="file-text" size={36} />
+      </div>
       <div class="empty-text">Select a row from the grid to inspect HTTP request & response details</div>
     </div>
   {:else}
@@ -145,16 +148,24 @@ ${body}
             else if (activeTab === 'request') copyToClipboard(payload?.request_text || '');
             else copyToClipboard(JSON.stringify(selectedItem, null, 2));
           }}
+          aria-label="Copy content"
         >
-          {copied ? '✓ Copied' : 'Copy'}
+          {#if copied}
+            <Icon name="check" size={14} />
+            <span>Copied</span>
+          {:else}
+            <Icon name="copy" size={14} />
+            <span>Copy</span>
+          {/if}
         </button>
 
         <button
           class="btn-close"
           onclick={() => resultsStore.select(null)}
           title="Close Inspector"
+          aria-label="Close Inspector"
         >
-          ✕
+          <Icon name="x" size={14} />
         </button>
       </div>
     </div>
@@ -173,7 +184,8 @@ ${body}
       {:else if activeTab === 'response'}
         {#if payload?.truncated}
           <div class="truncation-alert">
-            <span>⚠️ Response truncated to 500KB (Original size: {(payload.full_size_bytes / 1024).toFixed(1)} KB)</span>
+            <Icon name="alert-triangle" size={16} />
+            <span>Response truncated to 500KB (Original size: {(payload.full_size_bytes / 1024).toFixed(1)} KB)</span>
           </div>
         {/if}
 
@@ -209,7 +221,7 @@ ${body}
               </tr>
               <tr>
                 <td class="meta-key">Words / Lines</td>
-                <td class="meta-val">{selectedItem.words} words • {selectedItem.lines} lines</td>
+                <td class="meta-val">{selectedItem.words} words <span class="meta-sep">&bull;</span> {selectedItem.lines} lines</td>
               </tr>
               <tr>
                 <td class="meta-key">Duration</td>

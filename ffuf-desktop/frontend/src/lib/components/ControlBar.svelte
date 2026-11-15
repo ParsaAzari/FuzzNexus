@@ -1,5 +1,6 @@
 <script lang="ts">
   import { scanStore } from '../stores/scan.svelte';
+  import Icon from './Icon.svelte';
 
   let liveFilterType = $state<'status' | 'size' | 'words' | 'lines'>('status');
   let liveFilterValue = $state<string>('');
@@ -100,21 +101,25 @@
           onclick={() => scanStore.start()}
           disabled={scanStore.isSubmitting || !scanStore.url || !scanStore.wordlist}
         >
-          ▶ Start Scan
+          <Icon name="play" size={14} />
+          <span>Start Scan</span>
         </button>
       {:else if scanStore.state === 'Running'}
         <button class="btn btn-warning" onclick={() => scanStore.pause()}>
-          ⏸ Pause
+          <Icon name="pause" size={14} />
+          <span>Pause</span>
         </button>
       {:else if scanStore.state === 'Paused'}
         <button class="btn btn-success" onclick={() => scanStore.resume()}>
-          ▶ Resume
+          <Icon name="play" size={14} />
+          <span>Resume</span>
         </button>
       {/if}
 
       {#if scanStore.state === 'Running' || scanStore.state === 'Paused'}
         <button class="btn btn-danger" onclick={() => scanStore.stop()}>
-          ⏹ Stop
+          <Icon name="stop" size={14} />
+          <span>Stop</span>
         </button>
       {/if}
 
@@ -152,7 +157,9 @@
 
     <!-- Live Filter Adder -->
     <div class="live-filter-group">
-      <span class="filter-icon">⚡</span>
+      <span class="filter-icon">
+        <Icon name="zap" size={14} />
+      </span>
       <select bind:value={liveFilterType} class="filter-type-select">
         <option value="status">Status</option>
         <option value="size">Size</option>
@@ -174,7 +181,8 @@
 
   {#if scanStore.lastError}
     <div class="error-banner">
-      ⚠️ {scanStore.lastError}
+      <Icon name="alert-triangle" size={16} />
+      <span>{scanStore.lastError}</span>
     </div>
   {/if}
 </div>

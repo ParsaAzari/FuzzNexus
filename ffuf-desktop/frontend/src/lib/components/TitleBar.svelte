@@ -2,6 +2,7 @@
   import { themeStore } from '../stores/theme.svelte';
   import { scanStore } from '../stores/scan.svelte';
   import { resultsStore } from '../stores/results.svelte';
+  import Icon from './Icon.svelte';
 
   interface Props {
     activeView?: 'grid' | 'analytics';
@@ -31,7 +32,9 @@
 
   <div class="titlebar-center" style="--wails-draggable: no-drag;">
     <div class="search-box">
-      <span class="search-icon">⚲</span>
+      <span class="search-icon">
+        <Icon name="search" size={14} />
+      </span>
       <input
         type="text"
         placeholder="Filter results (URL, status, payload)..."
@@ -39,7 +42,9 @@
         class="search-input font-mono"
       />
       {#if resultsStore.quickFilter}
-        <button class="clear-btn" onclick={() => (resultsStore.quickFilter = '')}>✕</button>
+        <button class="clear-btn" onclick={() => (resultsStore.quickFilter = '')} aria-label="Clear quick filter">
+          <Icon name="x" size={12} />
+        </button>
       {/if}
     </div>
     <div class="match-counter font-mono">
@@ -95,13 +100,17 @@
       class="mode-toggle-btn"
       onclick={() => themeStore.toggleMode()}
       title="Mode: {themeStore.mode} (click to toggle)"
+      aria-label="Toggle theme mode"
     >
       {#if themeStore.mode === 'light'}
-        ☀️ Light
+        <Icon name="sun" size={14} />
+        <span>Light</span>
       {:else if themeStore.mode === 'dark'}
-        🌙 Dark
+        <Icon name="moon" size={14} />
+        <span>Dark</span>
       {:else}
-        ⚙️ Auto
+        <Icon name="laptop" size={14} />
+        <span>Auto</span>
       {/if}
     </button>
   </div>
