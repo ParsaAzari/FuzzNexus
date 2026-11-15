@@ -3,6 +3,13 @@
   import { scanStore } from '../stores/scan.svelte';
   import { resultsStore } from '../stores/results.svelte';
 
+  interface Props {
+    activeView?: 'grid' | 'analytics';
+    onViewChange?: (view: 'grid' | 'analytics') => void;
+  }
+
+  let { activeView = 'grid', onViewChange }: Props = $props();
+
   let filteredCount = $derived(resultsStore.filteredItems.length);
   let totalMatches = $derived(resultsStore.items.length);
 </script>
@@ -45,6 +52,24 @@
   </div>
 
   <div class="titlebar-right" style="--wails-draggable: no-drag;">
+    <!-- View Mode Switcher -->
+    <div class="view-picker">
+      <button
+        class="picker-btn"
+        class:active={activeView === 'grid'}
+        onclick={() => onViewChange?.('grid')}
+      >
+        Table
+      </button>
+      <button
+        class="picker-btn"
+        class:active={activeView === 'analytics'}
+        onclick={() => onViewChange?.('analytics')}
+      >
+        Analytics
+      </button>
+    </div>
+
     <!-- Theme Palette Selector -->
     <div class="theme-picker">
       <button
@@ -201,6 +226,30 @@
     display: flex;
     align-items: center;
     gap: 8px;
+  }
+
+  .view-picker {
+    display: flex;
+    background-color: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 2px;
+  }
+
+  .picker-btn {
+    all: unset;
+    font-size: 11px;
+    padding: 2px 8px;
+    border-radius: 4px;
+    cursor: pointer;
+    color: var(--text-secondary);
+    transition: all 0.12s ease;
+  }
+
+  .picker-btn.active {
+    background-color: var(--accent);
+    color: var(--accent-contrast);
+    font-weight: 600;
   }
 
   .theme-picker {

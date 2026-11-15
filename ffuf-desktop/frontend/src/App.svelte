@@ -2,9 +2,15 @@
   import TitleBar from './lib/components/TitleBar.svelte';
   import ControlBar from './lib/components/ControlBar.svelte';
   import VirtualGrid from './lib/components/VirtualGrid.svelte';
+  import Inspector from './lib/components/Inspector.svelte';
+  import SplitPane from './lib/components/SplitPane.svelte';
+  import AnalyticsDashboard from './lib/components/AnalyticsDashboard.svelte';
   import { scanStore } from './lib/stores/scan.svelte';
   import { resultsStore } from './lib/stores/results.svelte';
   import { ExportResults } from '../wailsjs/go/main/App';
+
+  type ViewMode = 'grid' | 'analytics';
+  let activeView = $state<ViewMode>('grid');
 
   let selectedItem = $derived(resultsStore.selectedItem);
   let isExporting = $state<boolean>(false);
@@ -16,7 +22,6 @@
     exportMessage = '';
     try {
       const fileName = `ffuf_session_${scanStore.sessionID}_results.${format}`;
-      // Export to current user home directory or downloads
       const targetPath = `${fileName}`;
       await ExportResults(scanStore.sessionID, format, targetPath);
       exportMessage = `Exported ${resultsStore.items.length} items to ${targetPath}`;
@@ -31,14 +36,32 @@
 
 <div class="app-layout">
   <!-- Top Navigation & Window Title -->
-  <TitleBar />
+  <TitleBar
+    {activeView}
+    onViewChange={(v) => (activeView = v)}
+  />
 
   <!-- Scan Execution & Parameters Bar -->
   <ControlBar />
 
-  <!-- High-Performance Virtualized Results Grid -->
-  <main class="grid-container">
-    <VirtualGrid />
+  <!-- Main View Area -->
+  <main class="content-container">
+    {#if activeView === 'grid'}
+      {#if selectedItem}
+        <SplitPane orientation="vertical" initialSplit={55} minSplit={25} maxSplit={75}>
+          {#snippet first()}
+            <VirtualGrid />
+          {/snippet}
+          {#snippet second()}
+            <Inspector />
+          {/snippet}
+        </SplitPane>
+      {:else}
+        <VirtualGrid />
+      {/if}
+    {:else}
+      <AnalyticsDashboard />
+    {/if}
   </main>
 
   <!-- Bottom Telemetry & Status Bar -->
@@ -95,12 +118,13 @@
     color: var(--text);
   }
 
-  .grid-container {
+  .content-container {
     display: flex;
     flex-direction: column;
     flex: 1;
     min-height: 0;
     position: relative;
+    overflow: hidden;
   }
 
   .status-bar {
