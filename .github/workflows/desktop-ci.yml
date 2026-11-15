@@ -52,10 +52,11 @@ jobs:
         working-directory: ffuf-desktop/frontend
         run: npm install
 
-      - name: Check Frontend (Typecheck & Build)
+      - name: Check Frontend (Typecheck, Test & Build)
         working-directory: ffuf-desktop/frontend
         run: |
           npm run check
+          npm test
           npm run build
 
       - name: Verify Production CSP Artifact
