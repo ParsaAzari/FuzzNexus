@@ -8,8 +8,11 @@
   import SplitPane from './lib/components/SplitPane.svelte';
   import AnalyticsDashboard from './lib/components/AnalyticsDashboard.svelte';
   import WordlistManager from './lib/components/WordlistManager.svelte';
+  import ToastContainer from './lib/components/ToastContainer.svelte';
   import { scanStore } from './lib/stores/scan.svelte';
   import { resultsStore } from './lib/stores/results.svelte';
+  import { filtersStore } from './lib/stores/filters.svelte';
+  import { toastStore } from './lib/stores/toast.svelte';
   import { ExportResults } from '../wailsjs/go/main/App';
 
   type ViewMode = 'grid' | 'analytics' | 'wordlists';
@@ -17,25 +20,60 @@
 
   let selectedItem = $derived(resultsStore.selectedItem);
   let isExporting = $state<boolean>(false);
-  let exportMessage = $state<string>('');
+
+  function handleGlobalShortcuts(e: KeyboardEvent) {
+    const isMeta = e.metaKey || e.ctrlKey;
+
+    if (e.key === 'Escape') {
+      if (filtersStore.isModalOpen) {
+        filtersStore.isModalOpen = false;
+        return;
+      }
+      if (resultsStore.selectedID !== null) {
+        resultsStore.select(null);
+        return;
+      }
+    }
+
+    if (isMeta && e.key === '1') {
+      e.preventDefault();
+      activeView = 'grid';
+    } else if (isMeta && e.key === '2') {
+      e.preventDefault();
+      activeView = 'analytics';
+    } else if (isMeta && e.key === '3') {
+      e.preventDefault();
+      activeView = 'wordlists';
+    } else if (isMeta && e.key.toLowerCase() === 'k') {
+      e.preventDefault();
+      filtersStore.isModalOpen = !filtersStore.isModalOpen;
+    } else if (isMeta && e.key.toLowerCase() === 'z') {
+      e.preventDefault();
+      if (e.shiftKey) {
+        filtersStore.redo();
+      } else {
+        filtersStore.undo();
+      }
+    }
+  }
 
   async function handleExport(format: 'json' | 'csv') {
     if (scanStore.sessionID <= 0 || resultsStore.items.length === 0) return;
     isExporting = true;
-    exportMessage = '';
     try {
       const fileName = `ffuf_session_${scanStore.sessionID}_results.${format}`;
       const targetPath = `${fileName}`;
       await ExportResults(scanStore.sessionID, format, targetPath);
-      exportMessage = `Exported ${resultsStore.items.length} items to ${targetPath}`;
-      setTimeout(() => (exportMessage = ''), 4000);
+      toastStore.success(`Exported ${resultsStore.items.length.toLocaleString()} items to ${targetPath}`);
     } catch (err: any) {
-      exportMessage = `Export failed: ${err?.message || err}`;
+      toastStore.error(`Export failed: ${err?.message || err}`);
     } finally {
       isExporting = false;
     }
   }
 </script>
+
+<svelte:window onkeydown={handleGlobalShortcuts} />
 
 <div class="app-layout">
   <!-- Top Navigation & Window Title -->
@@ -84,9 +122,6 @@
           Selected #{selectedItem.id} ({selectedItem.status} <span class="sep-dot">&bull;</span> {selectedItem.length} bytes <span class="sep-dot">&bull;</span> {selectedItem.duration_ms}ms)
         </span>
       {/if}
-      {#if exportMessage}
-        <span class="export-msg">{exportMessage}</span>
-      {/if}
     </div>
 
     <div class="status-bar-right">
@@ -116,6 +151,9 @@
 
   <!-- Advanced Query Builder Modal -->
   <AdvancedFilterModal />
+
+  <!-- Global Toast Notifications Overlay -->
+  <ToastContainer />
 </div>
 
 <style>
@@ -185,11 +223,6 @@
     border-radius: 4px;
     font-size: 10px;
     color: var(--text);
-  }
-
-  .export-msg {
-    color: var(--accent);
-    font-weight: 500;
   }
 
   .status-bar-right {

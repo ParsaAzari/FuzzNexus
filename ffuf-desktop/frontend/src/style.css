@@ -69,6 +69,13 @@
   --accent: #007AFF;
   --accent-contrast: #FFFFFF;
   --focus-ring: rgba(0, 122, 255, 0.4);
+
+  /* High-Contrast WCAG AA Compliant Status Colors */
+  --status-2xx: #1F7A38;
+  --status-3xx: #0062CC;
+  --status-4xx: #B25900;
+  --status-5xx: #D70015;
+  --status-err: #636366;
 }
 
 :root[data-theme="neutral"][data-mode="dark"],
@@ -83,6 +90,12 @@
   --accent: #0A84FF;
   --accent-contrast: #FFFFFF;
   --focus-ring: rgba(10, 132, 255, 0.5);
+
+  --status-2xx: #30D158;
+  --status-3xx: #409CFF;
+  --status-4xx: #FF9F0A;
+  --status-5xx: #FF453A;
+  --status-err: #98989D;
 }
 
 /* Ocean Theme */
@@ -97,6 +110,12 @@
   --accent: #1F6FEB;
   --accent-contrast: #FFFFFF;
   --focus-ring: rgba(31, 111, 235, 0.4);
+
+  --status-2xx: #1F7A38;
+  --status-3xx: #0062CC;
+  --status-4xx: #B25900;
+  --status-5xx: #D70015;
+  --status-err: #636366;
 }
 
 :root[data-theme="ocean"][data-mode="dark"] {
@@ -110,15 +129,28 @@
   --accent: #4C8DFF;
   --accent-contrast: #FFFFFF;
   --focus-ring: rgba(76, 141, 255, 0.5);
+
+  --status-2xx: #30D158;
+  --status-3xx: #409CFF;
+  --status-4xx: #FF9F0A;
+  --status-5xx: #FF453A;
+  --status-err: #98989D;
 }
 
-/* Semantic Status Badges */
+/* Standardized 4px Spacing Scale & Heights */
 :root {
-  --status-2xx: #34C759;
-  --status-3xx: #007AFF;
-  --status-4xx: #FF9500;
-  --status-5xx: #FF3B30;
-  --status-err: #8E8E93;
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-8: 32px;
+
+  --h-sm: 24px;
+  --h-md: 28px;
+  --h-lg: 32px;
+  --h-toolbar: 38px;
 }
 
 html, body {
@@ -162,4 +194,20 @@ code {
 .font-mono {
   font-family: 'JetBrains Mono', "SF Mono", monospace;
   font-variant-numeric: tabular-nums;
+}
+
+/* Universal Focus Rings (Apple HIG) */
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+/* Reduced Motion Compliance */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
 }
