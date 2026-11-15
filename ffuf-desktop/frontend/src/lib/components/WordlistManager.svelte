@@ -35,6 +35,9 @@
   let rawTextContent = $state<string>('');
   let rawTextareaRef = $state<HTMLTextAreaElement | null>(null);
   let lineInputRefs = $state<Record<number, HTMLInputElement>>({});
+  let sortDropdownOpen = $state<boolean>(false);
+  let transformDropdownOpen = $state<boolean>(false);
+  let selectedLineIndices = $state<Set<number>>(new Set());
   let isDirty = $state<boolean>(false);
   let pageOffset = $state<number>(0);
   const pageSize = 100;
@@ -57,6 +60,7 @@
     if (wordlistsStore.currentPage.lines) {
       editorLines = [...wordlistsStore.currentPage.lines];
       rawTextContent = editorLines.join('\n');
+      selectedLineIndices = new Set();
       isDirty = false;
     }
   });
@@ -67,6 +71,14 @@
       masterCheckboxRef.indeterminate = wordlistsStore.isSomeChecked;
     }
   });
+
+  function handleClickOutside(e: MouseEvent) {
+    const target = e.target as HTMLElement;
+    if (!target.closest('.dropdown-wrapper')) {
+      sortDropdownOpen = false;
+      transformDropdownOpen = false;
+    }
+  }
 
   function handleLineChange(index: number, value: string) {
     editorLines[index] = value;
@@ -80,34 +92,92 @@
     isDirty = true;
   }
 
-  function toggleEditorMode() {
-    if (editorMode === 'lines') {
+  function setEditorMode(mode: 'lines' | 'raw') {
+    if (editorMode === mode) return;
+    if (mode === 'raw') {
       rawTextContent = editorLines.join('\n');
       editorMode = 'raw';
-      toastStore.info('Raw Editor Mode: Cmd+A selects all lines');
+      toastStore.info('Raw View: Cmd+A selects all lines');
     } else {
       editorLines = rawTextContent.split('\n');
       editorMode = 'lines';
-      toastStore.info('Line-by-Line Mode active');
+      selectedLineIndices = new Set();
+      toastStore.info('Lines View');
     }
   }
 
-  function switchToRawModeAndSelectAll() {
-    rawTextContent = editorLines.join('\n');
-    editorMode = 'raw';
-    setTimeout(() => {
+  function toggleEditorMode() {
+    setEditorMode(editorMode === 'lines' ? 'raw' : 'lines');
+  }
+
+  function handleSelectAll() {
+    if (editorMode === 'raw') {
       if (rawTextareaRef) {
         rawTextareaRef.focus();
         rawTextareaRef.select();
       }
-    }, 50);
+      toastStore.info(`Selected all ${editorLines.length} lines`);
+    } else {
+      // Line-by-line mode
+      if (selectedLineIndices.size === editorLines.length) {
+        selectedLineIndices = new Set();
+      } else {
+        selectedLineIndices = new Set(editorLines.map((_, i) => i));
+        toastStore.info(`Selected all ${editorLines.length} lines (Cmd+C to copy, Delete to remove)`);
+      }
+    }
+  }
+
+  function toggleLineSelect(idx: number, e?: MouseEvent) {
+    if (e && e.shiftKey && selectedLineIndices.size > 0) {
+      const arr = Array.from(selectedLineIndices);
+      const last = arr[arr.length - 1];
+      const start = Math.min(last, idx);
+      const end = Math.max(last, idx);
+      const newSet = new Set(selectedLineIndices);
+      for (let i = start; i <= end; i++) {
+        newSet.add(i);
+      }
+      selectedLineIndices = newSet;
+      return;
+    }
+
+    const newSet = new Set(selectedLineIndices);
+    if (newSet.has(idx)) {
+      newSet.delete(idx);
+    } else {
+      newSet.add(idx);
+    }
+    selectedLineIndices = newSet;
+  }
+
+  function deleteSelectedLines() {
+    if (selectedLineIndices.size === 0) return;
+    const count = selectedLineIndices.size;
+    editorLines = editorLines.filter((_, i) => !selectedLineIndices.has(i));
+    if (editorLines.length === 0) {
+      editorLines = [''];
+    }
+    rawTextContent = editorLines.join('\n');
+    selectedLineIndices = new Set();
+    isDirty = true;
+    toastStore.success(`Deleted ${count} lines`);
   }
 
   async function copyAllLines() {
-    const text = editorMode === 'raw' ? rawTextContent : editorLines.join('\n');
+    let textToCopy = '';
+    if (editorMode === 'raw') {
+      textToCopy = rawTextContent;
+    } else if (selectedLineIndices.size > 0) {
+      textToCopy = editorLines.filter((_, i) => selectedLineIndices.has(i)).join('\n');
+    } else {
+      textToCopy = editorLines.join('\n');
+    }
+
     try {
-      await navigator.clipboard.writeText(text);
-      toastStore.success(`Copied ${editorLines.length} lines to clipboard`);
+      await navigator.clipboard.writeText(textToCopy);
+      const count = textToCopy.split('\n').length;
+      toastStore.success(`Copied ${count} lines to clipboard`);
     } catch {
       toastStore.error('Failed to copy to clipboard');
     }
@@ -138,6 +208,13 @@
       return;
     }
 
+    // Delete or Backspace when multiple lines are selected in Lines mode
+    if ((e.key === 'Delete' || e.key === 'Backspace') && selectedLineIndices.size > 0) {
+      e.preventDefault();
+      deleteSelectedLines();
+      return;
+    }
+
     if (e.key === 'ArrowDown') {
       if (idx < editorLines.length - 1) {
         e.preventDefault();
@@ -154,10 +231,20 @@
       return;
     }
 
-    // Shift+Cmd+A: Switch to Raw mode with all text selected
+    // Cmd+A inside line input: If already fully selected, promote to Select All Lines!
+    if (isMeta && e.key.toLowerCase() === 'a') {
+      const input = e.currentTarget as HTMLInputElement;
+      if (input.selectionStart === 0 && input.selectionEnd === input.value.length) {
+        e.preventDefault();
+        handleSelectAll();
+        return;
+      }
+    }
+
+    // Shift+Cmd+A: Select all lines directly
     if (isMeta && e.shiftKey && e.key.toLowerCase() === 'a') {
       e.preventDefault();
-      switchToRawModeAndSelectAll();
+      handleSelectAll();
       return;
     }
   }
@@ -551,7 +638,7 @@
   }
 </script>
 
-<svelte:window onkeydown={handleKeyDown} />
+<svelte:window onkeydown={handleKeyDown} onclick={handleClickOutside} />
 
 <div class="wordlist-manager select-none">
   <!-- Left Column: Wordlist Library -->
@@ -789,66 +876,210 @@
       <!-- Editor Toolbar (Transformations & Pagination) -->
       <div class="editor-toolbar">
         <div class="tools-group">
-          <button
-            class="tool-btn"
-            class:active-mode={editorMode === 'raw'}
-            onclick={toggleEditorMode}
-            title="Toggle between Line-by-Line and Raw Multiline Mode (Cmd+E)"
-          >
-            <Icon name={editorMode === 'raw' ? 'layers' : 'file-text'} size={12} />
-            <span>{editorMode === 'raw' ? 'Lines View' : 'Raw View'}</span>
-          </button>
-          <button
-            class="tool-btn"
-            onclick={switchToRawModeAndSelectAll}
-            title="Open Raw Mode with all lines selected (Shift+Cmd+A)"
-          >
-            <span>Select All</span>
-          </button>
-          <button
-            class="tool-btn"
-            onclick={copyAllLines}
-            title="Copy all lines on this page to clipboard"
-          >
-            <Icon name="copy" size={12} />
-            <span>Copy All</span>
-          </button>
-          <button class="tool-btn btn-tool-clean" onclick={handleCleanWordlist} title="Verify and clean all blank lines (Shift+Cmd+C)">
-            <Icon name="check" size={12} />
-            <span>Clean Blanks</span>
-          </button>
-          <button class="tool-btn" onclick={applyDeduplicate} title="Remove duplicate lines (Shift+Cmd+D)">
-            <Icon name="sliders" size={12} />
-            <span>Dedupe</span>
-          </button>
-          <button class="tool-btn" onclick={() => applySort(true)} title="Sort lines alphabetically ascending (Shift+Cmd+S)">
-            <Icon name="arrow-up" size={12} />
-            <span>Sort A-Z</span>
-          </button>
-          <button class="tool-btn" onclick={() => applySort(false)} title="Sort lines alphabetically descending">
-            <Icon name="arrow-down" size={12} />
-            <span>Sort Z-A</span>
-          </button>
-          <button class="tool-btn" onclick={applyTrim} title="Trim whitespace on all lines (Shift+Cmd+T)">
-            <span>Trim</span>
-          </button>
-          <button class="tool-btn" onclick={() => applyCase(true)} title="Convert all lines to lowercase">
-            <span>lower</span>
-          </button>
-          <button class="tool-btn" onclick={() => applyCase(false)} title="Convert all lines to uppercase">
-            <span>UPPER</span>
-          </button>
-          <button class="tool-btn" onclick={applyStripEmpty} title="Remove empty lines">
-            <span>Strip Empty</span>
-          </button>
-          <button class="tool-btn" onclick={() => (prefixSuffixModalOpen = true)} title="Add prefix and/or suffix to all lines">
-            <span>+ Prefix/Suffix</span>
-          </button>
+          <!-- View Segmented Control -->
+          <div class="segmented-control" role="group" aria-label="Editor View Mode">
+            <button
+              type="button"
+              class="segment-btn"
+              class:active={editorMode === 'lines'}
+              onclick={() => setEditorMode('lines')}
+              title="Line-by-line structured editor (Cmd+E)"
+            >
+              <Icon name="layers" size={11} />
+              <span>Lines</span>
+            </button>
+            <button
+              type="button"
+              class="segment-btn"
+              class:active={editorMode === 'raw'}
+              onclick={() => setEditorMode('raw')}
+              title="Raw multiline view - Cmd+A selects all lines (Cmd+E)"
+            >
+              <Icon name="file-text" size={11} />
+              <span>Raw</span>
+            </button>
+          </div>
+
+          <!-- Selection & Copy Group -->
+          <div class="btn-group">
+            <button
+              type="button"
+              class="tool-btn"
+              class:active={selectedLineIndices.size > 0 && selectedLineIndices.size === editorLines.length}
+              onclick={handleSelectAll}
+              title={editorMode === 'raw' ? 'Select all text (Cmd+A)' : selectedLineIndices.size === editorLines.length ? 'Deselect all lines' : 'Select all lines (Shift+Cmd+A)'}
+            >
+              <Icon name="check" size={11} />
+              <span>{selectedLineIndices.size > 0 && editorMode === 'lines' ? `All (${selectedLineIndices.size})` : 'Select All'}</span>
+            </button>
+            <button
+              type="button"
+              class="tool-btn"
+              onclick={copyAllLines}
+              title={selectedLineIndices.size > 0 ? `Copy ${selectedLineIndices.size} selected lines to clipboard` : 'Copy lines to clipboard'}
+            >
+              <Icon name="copy" size={11} />
+              <span>Copy</span>
+            </button>
+            {#if selectedLineIndices.size > 0 && editorMode === 'lines'}
+              <button
+                type="button"
+                class="tool-btn btn-tool-danger"
+                onclick={deleteSelectedLines}
+                title="Delete selected lines (Backspace or Delete)"
+              >
+                <Icon name="trash" size={11} />
+                <span>Delete</span>
+              </button>
+            {/if}
+          </div>
+
+          <!-- Hygiene Group -->
+          <div class="btn-group">
+            <button
+              type="button"
+              class="tool-btn btn-tool-clean"
+              onclick={handleCleanWordlist}
+              title="Verify and auto-clean blank lines (Shift+Cmd+C)"
+            >
+              <Icon name="check" size={11} />
+              <span>Clean Blanks</span>
+            </button>
+            <button
+              type="button"
+              class="tool-btn"
+              onclick={applyDeduplicate}
+              title="Remove duplicate lines (Shift+Cmd+D)"
+            >
+              <Icon name="sliders" size={11} />
+              <span>Dedupe</span>
+            </button>
+          </div>
+
+          <!-- Sort Dropdown -->
+          <div class="dropdown-wrapper">
+            <button
+              type="button"
+              class="tool-btn dropdown-toggle"
+              class:dropdown-active={sortDropdownOpen}
+              onclick={(e) => {
+                e.stopPropagation();
+                sortDropdownOpen = !sortDropdownOpen;
+                transformDropdownOpen = false;
+              }}
+              title="Sort lines alphabetically"
+            >
+              <Icon name="arrow-up-down" size={11} />
+              <span>Sort</span>
+              <Icon name="chevron-down" size={10} />
+            </button>
+            {#if sortDropdownOpen}
+              <div class="dropdown-menu">
+                <button
+                  type="button"
+                  class="dropdown-item"
+                  onclick={() => {
+                    applySort(true);
+                    sortDropdownOpen = false;
+                  }}
+                >
+                  <Icon name="arrow-up" size={11} />
+                  <span>Sort Ascending (A-Z)</span>
+                </button>
+                <button
+                  type="button"
+                  class="dropdown-item"
+                  onclick={() => {
+                    applySort(false);
+                    sortDropdownOpen = false;
+                  }}
+                >
+                  <Icon name="arrow-down" size={11} />
+                  <span>Sort Descending (Z-A)</span>
+                </button>
+              </div>
+            {/if}
+          </div>
+
+          <!-- Transform Dropdown -->
+          <div class="dropdown-wrapper">
+            <button
+              type="button"
+              class="tool-btn dropdown-toggle"
+              class:dropdown-active={transformDropdownOpen}
+              onclick={(e) => {
+                e.stopPropagation();
+                transformDropdownOpen = !transformDropdownOpen;
+                sortDropdownOpen = false;
+              }}
+              title="Transform line text"
+            >
+              <Icon name="edit" size={11} />
+              <span>Transform</span>
+              <Icon name="chevron-down" size={10} />
+            </button>
+            {#if transformDropdownOpen}
+              <div class="dropdown-menu">
+                <button
+                  type="button"
+                  class="dropdown-item"
+                  onclick={() => {
+                    applyTrim();
+                    transformDropdownOpen = false;
+                  }}
+                >
+                  <span>Trim Whitespace</span>
+                </button>
+                <button
+                  type="button"
+                  class="dropdown-item"
+                  onclick={() => {
+                    applyCase(true);
+                    transformDropdownOpen = false;
+                  }}
+                >
+                  <span>To Lowercase (lower)</span>
+                </button>
+                <button
+                  type="button"
+                  class="dropdown-item"
+                  onclick={() => {
+                    applyCase(false);
+                    transformDropdownOpen = false;
+                  }}
+                >
+                  <span>To Uppercase (UPPER)</span>
+                </button>
+                <button
+                  type="button"
+                  class="dropdown-item"
+                  onclick={() => {
+                    applyStripEmpty();
+                    transformDropdownOpen = false;
+                  }}
+                >
+                  <span>Strip Empty Lines</span>
+                </button>
+                <div class="dropdown-divider"></div>
+                <button
+                  type="button"
+                  class="dropdown-item"
+                  onclick={() => {
+                    prefixSuffixModalOpen = true;
+                    transformDropdownOpen = false;
+                  }}
+                >
+                  <span>Add Prefix / Suffix...</span>
+                </button>
+              </div>
+            {/if}
+          </div>
         </div>
 
         <!-- Pagination Controls -->
         <div class="pagination-group font-mono">
           <button
+            type="button"
             class="btn-page"
             disabled={pageOffset === 0}
             onclick={() => handlePageNav(pageOffset - pageSize)}
@@ -860,6 +1091,7 @@
             {totalLines > 0 ? pageOffset + 1 : 0} - {Math.min(pageOffset + pageSize, totalLines)} of {totalLines.toLocaleString()}
           </span>
           <button
+            type="button"
             class="btn-page"
             disabled={pageOffset + pageSize >= totalLines}
             onclick={() => handlePageNav(pageOffset + pageSize)}
@@ -875,20 +1107,35 @@
         <div class="editor-container">
           <div class="lines-gutter font-mono select-none">
             {#each editorLines as _, idx}
-              <div class="gutter-number">{pageOffset + idx + 1}</div>
+              <button
+                type="button"
+                class="gutter-number"
+                class:gutter-selected={selectedLineIndices.has(idx)}
+                onclick={(e) => toggleLineSelect(idx, e)}
+                title="Click to select line (Shift+Click for range)"
+              >
+                {pageOffset + idx + 1}
+              </button>
             {/each}
           </div>
           <div class="lines-content font-mono select-text">
             {#each editorLines as line, idx}
-              <input
-                bind:this={lineInputRefs[idx]}
-                type="text"
-                class="line-input"
-                value={line}
-                oninput={(e) => handleLineChange(idx, (e.currentTarget as HTMLInputElement).value)}
-                onkeydown={(e) => handleLineInputKeyDown(e, idx)}
-                onpaste={(e) => handleLinePaste(e, idx)}
-              />
+              <div class="line-row" class:line-row-selected={selectedLineIndices.has(idx)}>
+                <input
+                  bind:this={lineInputRefs[idx]}
+                  type="text"
+                  class="line-input"
+                  value={line}
+                  oninput={(e) => handleLineChange(idx, (e.currentTarget as HTMLInputElement).value)}
+                  onkeydown={(e) => handleLineInputKeyDown(e, idx)}
+                  onpaste={(e) => handleLinePaste(e, idx)}
+                  onfocus={() => {
+                    if (selectedLineIndices.size > 0 && !selectedLineIndices.has(idx)) {
+                      selectedLineIndices = new Set();
+                    }
+                  }}
+                />
+              </div>
             {/each}
           </div>
         </div>
@@ -1609,7 +1856,7 @@
   }
 
   .editor-toolbar {
-    height: 32px;
+    height: 38px;
     background-color: var(--bg-subtle);
     border-bottom: 1px solid var(--border);
     display: flex;
@@ -1617,36 +1864,168 @@
     justify-content: space-between;
     padding: 0 12px;
     gap: 8px;
-    overflow-x: auto;
+    position: relative;
+    z-index: 20;
+    white-space: nowrap;
+    user-select: none;
   }
 
   .tools-group {
     display: flex;
     align-items: center;
+    gap: 6px;
+    flex-shrink: 0;
+  }
+
+  .segmented-control {
+    display: inline-flex;
+    align-items: center;
+    background-color: var(--bg-hover);
+    border-radius: 6px;
+    padding: 2px;
+    gap: 2px;
+  }
+
+  .segment-btn {
+    height: 24px;
+    padding: 0 8px;
+    border: none;
+    border-radius: 4px;
+    background: transparent;
+    color: var(--text-secondary);
+    font-size: 11px;
+    font-weight: 500;
+    display: inline-flex;
+    align-items: center;
     gap: 4px;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: all 0.12s ease;
+  }
+
+  .segment-btn:hover {
+    color: var(--text);
+  }
+
+  .segment-btn.active {
+    background-color: var(--surface);
+    color: var(--text);
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12);
+    font-weight: 600;
+  }
+
+  .btn-group {
+    display: inline-flex;
+    align-items: center;
+    border-radius: 5px;
+    overflow: hidden;
+    border: 1px solid var(--border);
+    background-color: var(--surface);
+  }
+
+  .btn-group .tool-btn {
+    border: none;
+    border-right: 1px solid var(--border);
+    border-radius: 0;
+  }
+
+  .btn-group .tool-btn:last-child {
+    border-right: none;
   }
 
   .tool-btn {
-    height: 22px;
+    height: 24px;
     background-color: var(--surface);
     border: 1px solid var(--border);
-    border-radius: 3px;
-    padding: 0 6px;
-    font-size: 10.5px;
+    border-radius: 5px;
+    padding: 0 8px;
+    font-size: 11px;
+    font-weight: 500;
     color: var(--text);
     cursor: pointer;
     display: inline-flex;
     align-items: center;
     gap: 4px;
+    white-space: nowrap;
+    flex-shrink: 0;
+    line-height: 1;
+    transition: background-color 0.1s ease, color 0.1s ease;
   }
 
   .tool-btn:hover {
     background-color: var(--surface-hover);
   }
 
+  .tool-btn.active {
+    background-color: rgba(0, 122, 255, 0.12);
+    color: var(--accent);
+  }
+
   .btn-tool-clean {
     color: var(--accent);
-    border-color: rgba(0, 122, 255, 0.3);
+  }
+
+  .btn-tool-danger {
+    color: var(--danger, #ff453a);
+  }
+
+  .btn-tool-danger:hover {
+    background-color: rgba(255, 69, 58, 0.1);
+  }
+
+  .dropdown-wrapper {
+    position: relative;
+    display: inline-flex;
+  }
+
+  .dropdown-toggle.dropdown-active {
+    background-color: var(--surface-hover);
+    border-color: var(--accent);
+  }
+
+  .dropdown-menu {
+    position: absolute;
+    top: calc(100% + 4px);
+    left: 0;
+    min-width: 175px;
+    background-color: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    box-shadow: 0 6px 18px rgba(0, 0, 0, 0.28);
+    padding: 4px;
+    z-index: 100;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+
+  .dropdown-item {
+    height: 26px;
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    padding: 0 8px;
+    background: transparent;
+    border: none;
+    border-radius: 4px;
+    color: var(--text);
+    font-size: 11px;
+    cursor: pointer;
+    white-space: nowrap;
+    text-align: left;
+    width: 100%;
+    transition: background-color 0.1s ease;
+  }
+
+  .dropdown-item:hover {
+    background-color: var(--surface-hover);
+    color: var(--text);
+  }
+
+  .dropdown-divider {
+    height: 1px;
+    background-color: var(--border);
+    margin: 3px 0;
   }
 
   .pagination-group {
@@ -1654,17 +2033,19 @@
     align-items: center;
     gap: 6px;
     font-size: 11px;
+    flex-shrink: 0;
   }
 
   .btn-page {
-    height: 22px;
+    height: 24px;
     background-color: var(--surface);
     border: 1px solid var(--border);
-    border-radius: 3px;
-    padding: 0 6px;
-    font-size: 10px;
+    border-radius: 4px;
+    padding: 0 8px;
+    font-size: 10.5px;
     color: var(--text);
     cursor: pointer;
+    white-space: nowrap;
   }
 
   .btn-page:disabled {
@@ -1675,6 +2056,7 @@
   .page-indicator {
     color: var(--text-secondary);
     font-size: 10.5px;
+    white-space: nowrap;
   }
 
   .editor-container {
@@ -1685,7 +2067,7 @@
   }
 
   .lines-gutter {
-    width: 48px;
+    width: 52px;
     background-color: var(--bg-subtle);
     border-right: 1px solid var(--border);
     padding: 6px 0;
@@ -1696,13 +2078,49 @@
   }
 
   .gutter-number {
-    padding-right: 8px;
+    display: block;
+    width: 100%;
     height: 24px;
+    padding: 0 8px 0 0;
+    background: none;
+    border: none;
+    color: var(--text-secondary);
+    font-family: inherit;
+    font-size: 11px;
+    line-height: 24px;
+    text-align: right;
+    cursor: pointer;
+    user-select: none;
+    transition: background-color 0.1s ease, color 0.1s ease;
+  }
+
+  .gutter-number:hover {
+    background-color: var(--bg-hover);
+    color: var(--text);
+  }
+
+  .gutter-number.gutter-selected {
+    background-color: rgba(0, 122, 255, 0.22);
+    color: var(--accent);
+    font-weight: 600;
   }
 
   .lines-content {
     flex: 1;
     padding: 6px 0;
+  }
+
+  .line-row {
+    display: flex;
+    align-items: center;
+    height: 24px;
+    border-left: 2px solid transparent;
+    transition: background-color 0.1s ease;
+  }
+
+  .line-row.line-row-selected {
+    background-color: rgba(0, 122, 255, 0.12);
+    border-left-color: var(--accent);
   }
 
   .line-input {
@@ -1754,13 +2172,6 @@
 
   .raw-textarea:focus {
     background-color: rgba(0, 122, 255, 0.03);
-  }
-
-  .tool-btn.active-mode {
-    background-color: rgba(0, 122, 255, 0.15);
-    color: var(--accent);
-    border-color: var(--accent);
-    font-weight: 600;
   }
 
   .editor-footer {
