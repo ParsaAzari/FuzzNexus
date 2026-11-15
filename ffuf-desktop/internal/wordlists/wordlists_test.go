@@ -291,3 +291,75 @@ func TestConcurrentWordlistReads(t *testing.T) {
 	}
 	wg.Wait()
 }
+
+func TestDeleteWordlistsBatch(t *testing.T) {
+	db, tempDir := setupTestDB(t)
+	defer db.Close()
+	defer os.RemoveAll(tempDir)
+
+	mgr, err := wordlists.NewManager(tempDir, db)
+	if err != nil {
+		t.Fatalf("NewManager failed: %v", err)
+	}
+
+	wl1, err := mgr.CreateWordlist("batch1.txt", "a\nb\n")
+	if err != nil {
+		t.Fatalf("CreateWordlist 1 failed: %v", err)
+	}
+	wl2, err := mgr.CreateWordlist("batch2.txt", "c\nd\n")
+	if err != nil {
+		t.Fatalf("CreateWordlist 2 failed: %v", err)
+	}
+	wl3, err := mgr.CreateWordlist("batch3.txt", "e\nf\n")
+	if err != nil {
+		t.Fatalf("CreateWordlist 3 failed: %v", err)
+	}
+
+	// 1. Empty batch
+	deleted, err := mgr.DeleteWordlistsBatch([]int64{})
+	if err != nil || deleted != 0 {
+		t.Fatalf("expected (0, nil) for empty batch, got (%d, %v)", deleted, err)
+	}
+
+	// 2. Lock wl2, attempt batch delete of [wl1, wl2]
+	mgr.LockWordlist(wl2.Path)
+	deleted, err = mgr.DeleteWordlistsBatch([]int64{wl1.ID, wl2.ID})
+	if err == nil || !strings.Contains(err.Error(), wordlists.ErrWordlistLocked.Error()) {
+		t.Fatalf("expected ErrWordlistLocked error, got: %v", err)
+	}
+	if deleted != 0 {
+		t.Fatalf("expected 0 deleted due to lock pre-check, got: %d", deleted)
+	}
+
+	// Ensure wl1 was NOT deleted
+	if _, err := os.Stat(wl1.Path); os.IsNotExist(err) {
+		t.Fatalf("expected wl1 file to still exist after failed batch delete")
+	}
+
+	// 3. Unlock wl2, batch delete [wl1, wl2]
+	mgr.UnlockWordlist(wl2.Path)
+	deleted, err = mgr.DeleteWordlistsBatch([]int64{wl1.ID, wl2.ID})
+	if err != nil {
+		t.Fatalf("batch delete failed after unlock: %v", err)
+	}
+	if deleted != 2 {
+		t.Fatalf("expected 2 deleted, got: %d", deleted)
+	}
+
+	// Files 1 & 2 should be gone
+	if _, err := os.Stat(wl1.Path); !os.IsNotExist(err) {
+		t.Fatalf("expected wl1 file to be deleted")
+	}
+	if _, err := os.Stat(wl2.Path); !os.IsNotExist(err) {
+		t.Fatalf("expected wl2 file to be deleted")
+	}
+
+	// wl3 should remain
+	list, err := mgr.ListWordlists()
+	if err != nil {
+		t.Fatalf("ListWordlists failed: %v", err)
+	}
+	if len(list) != 1 || list[0].ID != wl3.ID {
+		t.Fatalf("expected only wl3 remaining, got: %+v", list)
+	}
+}

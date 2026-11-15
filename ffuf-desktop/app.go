@@ -178,6 +178,13 @@ func (a *App) DeleteWordlist(id int64) error {
 	return a.service.DeleteWordlist(id)
 }
 
+func (a *App) DeleteWordlistsBatch(ids []int64) (int, error) {
+	if a.service == nil {
+		return 0, errors.New("bridge service is not available")
+	}
+	return a.service.DeleteWordlistsBatch(ids)
+}
+
 func (a *App) ReadWordlistPage(id int64, offset int, limit int) (wordlists.WordlistPageDTO, error) {
 	if a.service == nil {
 		return wordlists.WordlistPageDTO{}, errors.New("bridge service is not available")

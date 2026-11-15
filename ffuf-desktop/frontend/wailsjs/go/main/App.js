@@ -18,6 +18,10 @@ export function DeleteWordlist(arg1) {
   return window['go']['main']['App']['DeleteWordlist'](arg1);
 }
 
+export function DeleteWordlistsBatch(arg1) {
+  return window['go']['main']['App']['DeleteWordlistsBatch'](arg1);
+}
+
 export function ExportResults(arg1, arg2, arg3) {
   return window['go']['main']['App']['ExportResults'](arg1, arg2, arg3);
 }

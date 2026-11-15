@@ -483,6 +483,11 @@ func (s *Service) DeleteWordlist(id int64) error {
 	return s.wordlists.DeleteWordlist(id)
 }
 
+// DeleteWordlistsBatch removes multiple wordlists and unlinks or deletes their files.
+func (s *Service) DeleteWordlistsBatch(ids []int64) (int, error) {
+	return s.wordlists.DeleteWordlistsBatch(ids)
+}
+
 // ReadWordlistPage reads a slice of lines for the virtual editor.
 func (s *Service) ReadWordlistPage(id int64, offset int, limit int) (wordlists.WordlistPageDTO, error) {
 	return s.wordlists.ReadWordlistPage(id, offset, limit)

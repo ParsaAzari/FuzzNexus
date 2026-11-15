@@ -13,6 +13,8 @@ export function DeleteFilterPreset(arg1:string):Promise<void>;
 
 export function DeleteWordlist(arg1:number):Promise<void>;
 
+export function DeleteWordlistsBatch(arg1:Array<number>):Promise<number>;
+
 export function ExportResults(arg1:number,arg2:string,arg3:string):Promise<void>;
 
 export function ExportWordlist(arg1:number,arg2:string):Promise<void>;

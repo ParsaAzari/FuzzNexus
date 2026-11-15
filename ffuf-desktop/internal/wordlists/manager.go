@@ -204,6 +204,51 @@ func (m *Manager) DeleteWordlist(id int64) error {
 	return nil
 }
 
+// DeleteWordlistsBatch deletes multiple wordlists by their IDs.
+// Returns the count of successfully deleted wordlists and any error encountered.
+func (m *Manager) DeleteWordlistsBatch(ids []int64) (int, error) {
+	if len(ids) == 0 {
+		return 0, nil
+	}
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	// Pre-check if any target wordlist is currently locked by an active scan
+	for _, id := range ids {
+		var path string
+		err := m.db.QueryRow("SELECT path FROM wordlists WHERE id = ?", id).Scan(&path)
+		if err != nil {
+			continue
+		}
+		clean := filepath.Clean(path)
+		if m.lockedPaths[clean] > 0 {
+			return 0, fmt.Errorf("%w: wordlist %s (id %d) is in use by an active scan", ErrWordlistLocked, filepath.Base(path), id)
+		}
+	}
+
+	deletedCount := 0
+	for _, id := range ids {
+		var path string
+		var isLinkedInt int
+		err := m.db.QueryRow("SELECT path, is_linked FROM wordlists WHERE id = ?", id).Scan(&path, &isLinkedInt)
+		if err != nil {
+			continue
+		}
+
+		_, err = m.db.Exec("DELETE FROM wordlists WHERE id = ?", id)
+		if err != nil {
+			return deletedCount, err
+		}
+
+		if isLinkedInt == 0 {
+			_ = os.Remove(path)
+		}
+		deletedCount++
+	}
+
+	return deletedCount, nil
+}
+
 // ReadWordlistPage reads a window of lines from the wordlist for virtual rendering.
 func (m *Manager) ReadWordlistPage(id int64, offset int, limit int) (WordlistPageDTO, error) {
 	m.mu.RLock()

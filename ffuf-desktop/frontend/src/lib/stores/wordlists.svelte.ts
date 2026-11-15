@@ -3,6 +3,7 @@ import {
   CreateWordlist,
   UpdateWordlist,
   DeleteWordlist,
+  DeleteWordlistsBatch,
   ReadWordlistPage,
   SaveWordlistContent,
   ImportWordlistFromPath,
@@ -16,6 +17,7 @@ import type { WordlistDTO, WordlistPageDTO, WordlistStatsDTO } from '../types';
 class WordlistsStore {
   items = $state<WordlistDTO[]>([]);
   selectedID = $state<number | null>(null);
+  checkedIDs = $state<number[]>([]);
   selectedStats = $state<WordlistStatsDTO | null>(null);
   currentPage = $state<WordlistPageDTO>({ lines: [], total_lines: 0, offset: 0, limit: 100 });
   isLoading = $state<boolean>(false);
@@ -33,11 +35,48 @@ class WordlistsStore {
     return this.items.filter((w) => w.name.toLowerCase().includes(q) || w.path.toLowerCase().includes(q));
   });
 
+  isAllChecked = $derived(
+    this.filteredWordlists.length > 0 &&
+      this.filteredWordlists.every((w) => this.checkedIDs.includes(w.id))
+  );
+
+  isSomeChecked = $derived(
+    this.checkedIDs.length > 0 && !this.isAllChecked
+  );
+
+  checkedCount = $derived(this.checkedIDs.length);
+
+  toggleCheck(id: number) {
+    if (this.checkedIDs.includes(id)) {
+      this.checkedIDs = this.checkedIDs.filter((i) => i !== id);
+    } else {
+      this.checkedIDs = [...this.checkedIDs, id];
+    }
+  }
+
+  checkAll() {
+    this.checkedIDs = this.filteredWordlists.map((w) => w.id);
+  }
+
+  uncheckAll() {
+    this.checkedIDs = [];
+  }
+
+  toggleCheckAll() {
+    if (this.isAllChecked) {
+      this.uncheckAll();
+    } else {
+      this.checkAll();
+    }
+  }
+
   async loadWordlists() {
     this.isLoading = true;
     this.error = '';
     try {
       this.items = (await ListWordlists()) || [];
+      // Clean up any checked IDs that are no longer in items
+      this.checkedIDs = this.checkedIDs.filter((id) => this.items.some((w) => w.id === id));
       if (this.items.length > 0 && this.selectedID === null) {
         this.selectWordlist(this.items[0].id);
       }
@@ -153,6 +192,7 @@ class WordlistsStore {
   async deleteWordlist(id: number) {
     try {
       await DeleteWordlist(id);
+      this.checkedIDs = this.checkedIDs.filter((i) => i !== id);
       if (this.selectedID === id) {
         this.selectedID = null;
         this.currentPage = { lines: [], total_lines: 0, offset: 0, limit: 100 };
@@ -160,6 +200,23 @@ class WordlistsStore {
       await this.loadWordlists();
     } catch (err: any) {
       this.error = `Failed to delete wordlist: ${err?.message || err}`;
+      throw err;
+    }
+  }
+
+  async deleteBatch(ids: number[]): Promise<number> {
+    if (!ids || ids.length === 0) return 0;
+    try {
+      const deletedCount = await DeleteWordlistsBatch(ids);
+      this.checkedIDs = this.checkedIDs.filter((i) => !ids.includes(i));
+      if (this.selectedID && ids.includes(this.selectedID)) {
+        this.selectedID = null;
+        this.currentPage = { lines: [], total_lines: 0, offset: 0, limit: 100 };
+      }
+      await this.loadWordlists();
+      return deletedCount;
+    } catch (err: any) {
+      this.error = `Failed to delete wordlists: ${err?.message || err}`;
       throw err;
     }
   }
