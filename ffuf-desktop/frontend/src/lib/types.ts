@@ -3,8 +3,32 @@ import type { blobs, bridge, output, store } from '../../wailsjs/go/models';
 export type ResultDTO = output.ResultDTO;
 export type ScanRequestDTO = bridge.ScanRequestDTO;
 export type ResultsPageDTO = bridge.ResultsPageDTO;
+export type FilteredResultsPageDTO = bridge.FilteredResultsPageDTO;
 export type PayloadDTO = blobs.PayloadDTO;
 export type SessionDTO = store.SessionDTO;
+export interface FilterRule {
+  id: string;
+  field: string;
+  operator: string;
+  value: string;
+  value2?: string;
+  enabled: boolean;
+  layer: string;
+}
+
+export interface FilterGroup {
+  id: string;
+  conjunction: string;
+  rules: FilterRule[];
+  groups?: FilterGroup[];
+  enabled: boolean;
+}
+
+export type FilterPresetDTO = store.FilterPresetDTO;
+
+export type FilterField = 'status' | 'length' | 'words' | 'lines' | 'duration' | 'url' | 'host' | 'payload';
+export type FilterOperator = '=' | '!=' | '<' | '<=' | '>' | '>=' | 'between' | 'in' | 'contains' | 'not_contains' | 'regex';
+export type FilterLayer = 'view' | 'engine' | 'both';
 
 export type ScanState = 'Idle' | 'Running' | 'Paused' | 'Stopping' | 'Completed' | 'Failed' | 'Stopped';
 

@@ -6,12 +6,24 @@ export function AddLiveFilter(arg1, arg2) {
   return window['go']['main']['App']['AddLiveFilter'](arg1, arg2);
 }
 
+export function DeleteFilterPreset(arg1) {
+  return window['go']['main']['App']['DeleteFilterPreset'](arg1);
+}
+
 export function ExportResults(arg1, arg2, arg3) {
   return window['go']['main']['App']['ExportResults'](arg1, arg2, arg3);
 }
 
+export function GetFilterPresets() {
+  return window['go']['main']['App']['GetFilterPresets']();
+}
+
 export function GetResultPayload(arg1, arg2, arg3) {
   return window['go']['main']['App']['GetResultPayload'](arg1, arg2, arg3);
+}
+
+export function GetResultsFiltered(arg1, arg2, arg3, arg4) {
+  return window['go']['main']['App']['GetResultsFiltered'](arg1, arg2, arg3, arg4);
 }
 
 export function GetResultsSince(arg1, arg2, arg3) {
@@ -32,6 +44,10 @@ export function PauseScan() {
 
 export function ResumeScan() {
   return window['go']['main']['App']['ResumeScan']();
+}
+
+export function SaveFilterPreset(arg1, arg2) {
+  return window['go']['main']['App']['SaveFilterPreset'](arg1, arg2);
 }
 
 export function StartScan(arg1) {

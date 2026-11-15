@@ -1,5 +1,6 @@
 <script lang="ts">
   import { resultsStore } from '../stores/results.svelte';
+  import { filtersStore } from '../stores/filters.svelte';
   import type { ResultDTO, SortField } from '../types';
   import Icon from './Icon.svelte';
 
@@ -9,6 +10,7 @@
   let containerRef = $state<HTMLDivElement | null>(null);
   let scrollTop = $state<number>(0);
   let containerHeight = $state<number>(600);
+  let contextMenu = $state<{ x: number; y: number; row: ResultDTO } | null>(null);
 
   let items = $derived(resultsStore.filteredItems);
   let totalCount = $derived(items.length);
@@ -77,6 +79,15 @@
     if (keys.length === 0) return '';
     if (inputs['FUZZ']) return inputs['FUZZ'];
     return inputs[keys[0]];
+  }
+
+  function handleContextMenu(e: MouseEvent, row: ResultDTO) {
+    e.preventDefault();
+    contextMenu = { x: e.clientX, y: e.clientY, row };
+  }
+
+  function closeContextMenu() {
+    contextMenu = null;
   }
 </script>
 
@@ -166,6 +177,7 @@
             role="row"
             tabindex="0"
             onclick={() => resultsStore.select(row.id)}
+            oncontextmenu={(e) => handleContextMenu(e, row)}
             onkeydown={(e) => {
               if (e.key === 'Enter' || e.key === ' ') {
                 e.preventDefault();
@@ -195,6 +207,89 @@
       </div>
     {/if}
   </div>
+
+  {#if contextMenu}
+    <div
+      class="context-menu-backdrop"
+      role="menu"
+      tabindex="-1"
+      onclick={(e) => { if (e.target === e.currentTarget) closeContextMenu(); }}
+      onkeydown={(e) => e.key === 'Escape' && closeContextMenu()}
+    >
+      <div
+        class="context-menu"
+        role="presentation"
+        style="top: {contextMenu.y}px; left: {contextMenu.x}px;"
+      >
+        <div class="menu-header font-mono">Row #{contextMenu.row.id}</div>
+        <button
+          class="menu-item"
+          onclick={() => {
+            filtersStore.addQuickFilter('status', '=', String(contextMenu?.row.status));
+            closeContextMenu();
+          }}
+        >
+          <Icon name="filter" size={13} />
+          <span>Only Status {contextMenu.row.status}</span>
+        </button>
+        <button
+          class="menu-item"
+          onclick={() => {
+            filtersStore.addQuickFilter('status', '!=', String(contextMenu?.row.status));
+            closeContextMenu();
+          }}
+        >
+          <Icon name="x" size={13} />
+          <span>Hide Status {contextMenu.row.status}</span>
+        </button>
+        <div class="menu-divider"></div>
+        <button
+          class="menu-item"
+          onclick={() => {
+            filtersStore.addQuickFilter('length', '=', String(contextMenu?.row.length));
+            closeContextMenu();
+          }}
+        >
+          <Icon name="filter" size={13} />
+          <span>Only Size {contextMenu.row.length}</span>
+        </button>
+        <button
+          class="menu-item"
+          onclick={() => {
+            filtersStore.addQuickFilter('length', '!=', String(contextMenu?.row.length));
+            closeContextMenu();
+          }}
+        >
+          <Icon name="x" size={13} />
+          <span>Hide Size {contextMenu.row.length}</span>
+        </button>
+        {#if contextMenu.row.host}
+          <div class="menu-divider"></div>
+          <button
+            class="menu-item"
+            onclick={() => {
+              filtersStore.addQuickFilter('host', '=', contextMenu?.row.host || '');
+              closeContextMenu();
+            }}
+          >
+            <Icon name="globe" size={13} />
+            <span>Only Host {contextMenu.row.host}</span>
+          </button>
+        {/if}
+        <div class="menu-divider"></div>
+        <button
+          class="menu-item"
+          onclick={() => {
+            navigator.clipboard.writeText(contextMenu?.row.url || '');
+            closeContextMenu();
+          }}
+        >
+          <Icon name="copy" size={13} />
+          <span>Copy Target URL</span>
+        </button>
+      </div>
+    </div>
+  {/if}
 </div>
 
 <style>
@@ -395,5 +490,59 @@
     max-width: 320px;
     text-align: center;
     line-height: 1.5;
+  }
+
+  .context-menu-backdrop {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    z-index: 9998;
+  }
+
+  .context-menu {
+    position: fixed;
+    background-color: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+    min-width: 180px;
+    padding: 4px 0;
+    z-index: 9999;
+  }
+
+  .menu-header {
+    padding: 4px 10px;
+    font-size: 10px;
+    color: var(--text-secondary);
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 2px;
+  }
+
+  .menu-item {
+    width: 100%;
+    height: 26px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 0 10px;
+    background: none;
+    border: none;
+    font-size: 11px;
+    color: var(--text);
+    cursor: pointer;
+    text-align: left;
+  }
+
+  .menu-item:hover {
+    background-color: var(--accent);
+    color: var(--accent-contrast);
+  }
+
+  .menu-divider {
+    height: 1px;
+    background-color: var(--border);
+    margin: 3px 0;
   }
 </style>

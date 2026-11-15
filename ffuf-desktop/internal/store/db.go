@@ -152,6 +152,43 @@ func (s *Store) runMigrations() error {
 		}
 	}
 
+	if version < 2 {
+		tx, err := s.writer.Begin()
+		if err != nil {
+			return err
+		}
+		defer tx.Rollback()
+
+		schemaV2 := `
+		CREATE TABLE IF NOT EXISTS filter_presets (
+			id INTEGER PRIMARY KEY AUTOINCREMENT,
+			name TEXT NOT NULL UNIQUE,
+			created_at TIMESTAMP NOT NULL,
+			filter_json TEXT NOT NULL
+		);
+
+		CREATE TABLE IF NOT EXISTS wordlists (
+			id INTEGER PRIMARY KEY AUTOINCREMENT,
+			name TEXT NOT NULL,
+			path TEXT NOT NULL UNIQUE,
+			line_count INTEGER NOT NULL DEFAULT 0,
+			size_bytes INTEGER NOT NULL DEFAULT 0,
+			is_linked INTEGER NOT NULL DEFAULT 0,
+			created_at TIMESTAMP NOT NULL,
+			updated_at TIMESTAMP NOT NULL
+		);
+
+		INSERT INTO schema_migrations (version, applied_at) VALUES (2, CURRENT_TIMESTAMP);
+		`
+		if _, err := tx.Exec(schemaV2); err != nil {
+			return err
+		}
+
+		if err := tx.Commit(); err != nil {
+			return err
+		}
+	}
+
 	return nil
 }
 
@@ -464,4 +501,152 @@ func (s *Store) Close() error {
 		return wErr
 	}
 	return rErr
+}
+
+// GetResultsFiltered queries results matching a FilterGroup for a session.
+// Returns matched results up to limit, total count of matched rows, and any error.
+func (s *Store) GetResultsFiltered(sessionID int64, group FilterGroup, limit int, offset int) ([]output.ResultDTO, int64, error) {
+	if limit <= 0 {
+		limit = 1000
+	} else if limit > 5000 {
+		limit = 5000
+	}
+	if offset < 0 {
+		offset = 0
+	}
+
+	filterClause, filterArgs, err := BuildFilterSQL(group)
+	if err != nil {
+		return nil, 0, fmt.Errorf("failed to build filter SQL: %w", err)
+	}
+
+	baseWhere := "WHERE session_id = ?"
+	args := []interface{}{sessionID}
+
+	if filterClause != "" {
+		baseWhere = fmt.Sprintf("WHERE session_id = ? AND %s", filterClause)
+		args = append(args, filterArgs...)
+	}
+
+	// 1. Get total matching count
+	countQuery := fmt.Sprintf("SELECT COUNT(*) FROM results %s", baseWhere)
+	var totalMatches int64
+	if err := s.reader.QueryRow(countQuery, args...).Scan(&totalMatches); err != nil {
+		return nil, 0, fmt.Errorf("count query failed: %w", err)
+	}
+
+	// 2. Fetch rows
+	selectQuery := fmt.Sprintf(`
+		SELECT id, position, inputs_json, status, length, words, lines,
+		       duration_ms, url, redirect_location, content_type, hash, host,
+		       scraper_data_json, cancelled
+		FROM results
+		%s
+		ORDER BY id ASC
+		LIMIT ? OFFSET ?
+	`, baseWhere)
+
+	selectArgs := append(args, limit, offset)
+	rows, err := s.reader.Query(selectQuery, selectArgs...)
+	if err != nil {
+		return nil, 0, fmt.Errorf("select query failed: %w", err)
+	}
+	defer rows.Close()
+
+	var results []output.ResultDTO
+	for rows.Next() {
+		var item output.ResultDTO
+		var inputsJSON, scraperJSON string
+		var redirectLoc, contentType, hash, host sql.NullString
+		var cancelledInt int
+
+		err := rows.Scan(
+			&item.ID,
+			&item.Position,
+			&inputsJSON,
+			&item.Status,
+			&item.Length,
+			&item.Words,
+			&item.Lines,
+			&item.DurationMs,
+			&item.URL,
+			&redirectLoc,
+			&contentType,
+			&hash,
+			&host,
+			&scraperJSON,
+			&cancelledInt,
+		)
+		if err != nil {
+			return nil, 0, err
+		}
+
+		if inputsJSON != "" {
+			_ = json.Unmarshal([]byte(inputsJSON), &item.Inputs)
+		}
+		if scraperJSON != "" {
+			_ = json.Unmarshal([]byte(scraperJSON), &item.ScraperData)
+		}
+		item.RedirectLocation = redirectLoc.String
+		item.ContentType = contentType.String
+		item.Hash = hash.String
+		item.Host = host.String
+		item.Cancelled = (cancelledInt == 1)
+
+		results = append(results, item)
+	}
+
+	return results, totalMatches, nil
+}
+
+// SaveFilterPreset saves or updates a named filter preset.
+func (s *Store) SaveFilterPreset(name, filterJSON string) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	nowStr := time.Now().UTC().Format(time.RFC3339Nano)
+	_, err := s.writer.Exec(`
+		INSERT INTO filter_presets (name, created_at, filter_json)
+		VALUES (?, ?, ?)
+		ON CONFLICT(name) DO UPDATE SET
+			filter_json = excluded.filter_json,
+			created_at = excluded.created_at
+	`, name, nowStr, filterJSON)
+	return err
+}
+
+// GetFilterPresets retrieves all saved filter presets.
+func (s *Store) GetFilterPresets() ([]FilterPresetDTO, error) {
+	rows, err := s.reader.Query(`
+		SELECT id, name, created_at, filter_json
+		FROM filter_presets
+		ORDER BY name ASC
+	`)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var presets []FilterPresetDTO
+	for rows.Next() {
+		var p FilterPresetDTO
+		var createdStr string
+		if err := rows.Scan(&p.ID, &p.Name, &createdStr, &p.FilterJSON); err != nil {
+			return nil, err
+		}
+		if t, err := parseDBTime(createdStr); err == nil {
+			p.CreatedAt = t
+		}
+		presets = append(presets, p)
+	}
+	return presets, nil
+}
+
+// DeleteFilterPreset deletes a preset by name.
+func (s *Store) DeleteFilterPreset(name string) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	_, err := s.writer.Exec(`DELETE FROM filter_presets WHERE name = ?`, name)
+	return err
 }

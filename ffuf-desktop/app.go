@@ -120,3 +120,31 @@ func (a *App) ExportResults(sessionID int64, format string, targetPath string) e
 	}
 	return a.service.ExportResults(sessionID, format, targetPath)
 }
+
+func (a *App) GetResultsFiltered(sessionID int64, group store.FilterGroup, limit int, offset int) (bridge.FilteredResultsPageDTO, error) {
+	if a.service == nil {
+		return bridge.FilteredResultsPageDTO{}, errors.New("bridge service is not available")
+	}
+	return a.service.GetResultsFiltered(sessionID, group, limit, offset)
+}
+
+func (a *App) SaveFilterPreset(name, filterJSON string) error {
+	if a.service == nil {
+		return errors.New("bridge service is not available")
+	}
+	return a.service.SaveFilterPreset(name, filterJSON)
+}
+
+func (a *App) GetFilterPresets() ([]store.FilterPresetDTO, error) {
+	if a.service == nil {
+		return nil, errors.New("bridge service is not available")
+	}
+	return a.service.GetFilterPresets()
+}
+
+func (a *App) DeleteFilterPreset(name string) error {
+	if a.service == nil {
+		return errors.New("bridge service is not available")
+	}
+	return a.service.DeleteFilterPreset(name)
+}

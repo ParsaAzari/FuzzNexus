@@ -1,6 +1,8 @@
 <script lang="ts">
   import TitleBar from './lib/components/TitleBar.svelte';
   import ControlBar from './lib/components/ControlBar.svelte';
+  import FilterBar from './lib/components/FilterBar.svelte';
+  import AdvancedFilterModal from './lib/components/AdvancedFilterModal.svelte';
   import VirtualGrid from './lib/components/VirtualGrid.svelte';
   import Inspector from './lib/components/Inspector.svelte';
   import SplitPane from './lib/components/SplitPane.svelte';
@@ -43,6 +45,9 @@
 
   <!-- Scan Execution & Parameters Bar -->
   <ControlBar />
+
+  <!-- Dual-Layer Advanced Filter Bar -->
+  <FilterBar />
 
   <!-- Main View Area -->
   <main class="content-container">
@@ -105,6 +110,9 @@
       </span>
     </div>
   </footer>
+
+  <!-- Advanced Query Builder Modal -->
+  <AdvancedFilterModal />
 </div>
 
 <style>

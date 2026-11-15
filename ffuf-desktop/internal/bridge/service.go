@@ -45,6 +45,12 @@ type ResultsPageDTO struct {
 	LastID  int64              `json:"last_id"`
 }
 
+// FilteredResultsPageDTO represents paginated results matching a filter along with total count.
+type FilteredResultsPageDTO struct {
+	Results      []output.ResultDTO `json:"results"`
+	TotalMatches int64              `json:"total_matches"`
+}
+
 // StateEvent represents a scan state transition broadcast to the frontend.
 type StateEvent struct {
 	SessionID int64      `json:"session_id"`
@@ -345,6 +351,33 @@ func (s *Service) GetSessions(limit int) ([]store.SessionDTO, error) {
 // GetSession retrieves metadata for a single session.
 func (s *Service) GetSession(sessionID int64) (*store.SessionDTO, error) {
 	return s.store.GetSession(sessionID)
+}
+
+// GetResultsFiltered queries results matching a filter specification.
+func (s *Service) GetResultsFiltered(sessionID int64, group store.FilterGroup, limit int, offset int) (FilteredResultsPageDTO, error) {
+	results, total, err := s.store.GetResultsFiltered(sessionID, group, limit, offset)
+	if err != nil {
+		return FilteredResultsPageDTO{}, err
+	}
+	return FilteredResultsPageDTO{
+		Results:      results,
+		TotalMatches: total,
+	}, nil
+}
+
+// SaveFilterPreset saves or updates a named filter preset in SQLite.
+func (s *Service) SaveFilterPreset(name, filterJSON string) error {
+	return s.store.SaveFilterPreset(name, filterJSON)
+}
+
+// GetFilterPresets retrieves all saved filter presets from SQLite.
+func (s *Service) GetFilterPresets() ([]store.FilterPresetDTO, error) {
+	return s.store.GetFilterPresets()
+}
+
+// DeleteFilterPreset removes a filter preset by name.
+func (s *Service) DeleteFilterPreset(name string) error {
+	return s.store.DeleteFilterPreset(name)
 }
 
 // ExportResults exports scan results to disk in CSV or JSON format.

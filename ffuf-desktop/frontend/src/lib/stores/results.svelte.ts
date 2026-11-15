@@ -1,5 +1,6 @@
 import { GetResultsSince } from '../../../wailsjs/go/main/App';
 import type { ResultDTO, CommittedEvent, SortField, SortDirection } from '../types';
+import { filtersStore } from './filters.svelte';
 
 class ResultsStore {
   items = $state<ResultDTO[]>([]);
@@ -16,7 +17,7 @@ class ResultsStore {
   );
 
   filteredItems = $derived.by(() => {
-    let list = this.items;
+    let list = this.items.filter((item) => filtersStore.evaluateItem(item));
     const q = this.quickFilter.trim().toLowerCase();
     if (q) {
       list = list.filter((r) => {
