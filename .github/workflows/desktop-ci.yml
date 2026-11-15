@@ -1,0 +1,103 @@
+name: Desktop CI
+
+on:
+  push:
+    branches: [ main ]
+    tags: [ 'v*', 'phase-*' ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  build:
+    name: Build & Test (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [macos-latest, ubuntu-latest, windows-latest]
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.24'
+          cache: true
+          cache-dependency-path: |
+            go.sum
+            ffuf-desktop/go.sum
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: 'npm'
+          cache-dependency-path: ffuf-desktop/frontend/package.json
+
+      - name: Install Linux dependencies
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libgtk-3-dev libwebkit2gtk-4.0-dev pkg-config
+
+      - name: Install Wails CLI
+        run: go install github.com/wailsapp/wails/v2/cmd/wails@latest
+
+      - name: Core Engine Tests
+        run: go test -race -count=1 ./pkg/...
+
+      - name: Install Frontend Dependencies
+        working-directory: ffuf-desktop/frontend
+        run: npm install
+
+      - name: Check Frontend (Typecheck & Build)
+        working-directory: ffuf-desktop/frontend
+        run: |
+          npm run check
+          npm run build
+
+      - name: Verify Production CSP Artifact
+        shell: bash
+        run: |
+          if grep -q "%CSP_DIRECTIVE%" ffuf-desktop/frontend/dist/index.html; then
+            echo "Error: %CSP_DIRECTIVE% placeholder remaining in build!"
+            exit 1
+          fi
+          if grep -q "ws://" ffuf-desktop/frontend/dist/index.html; then
+            echo "Error: ws:// found in production CSP!"
+            exit 1
+          fi
+          echo "Production CSP verified cleanly."
+
+      - name: Desktop Go Tests
+        working-directory: ffuf-desktop
+        run: |
+          go vet ./...
+          go test -race -count=1 -v ./...
+
+      - name: Build Wails Desktop Application
+        working-directory: ffuf-desktop
+        run: wails build
+
+      - name: Upload Desktop Artifact (macOS)
+        if: runner.os == 'macOS'
+        uses: actions/upload-artifact@v4
+        with:
+          name: ffuf-desktop-macos
+          path: ffuf-desktop/build/bin/ffuf-desktop.app
+
+      - name: Upload Desktop Artifact (Windows)
+        if: runner.os == 'Windows'
+        uses: actions/upload-artifact@v4
+        with:
+          name: ffuf-desktop-windows
+          path: ffuf-desktop/build/bin/ffuf-desktop.exe
+
+      - name: Upload Desktop Artifact (Linux)
+        if: runner.os == 'Linux'
+        uses: actions/upload-artifact@v4
+        with:
+          name: ffuf-desktop-linux
+          path: ffuf-desktop/build/bin/ffuf-desktop

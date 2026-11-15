@@ -1,0 +1,7 @@
+/ffuf
+.idea
+/dist
+node_modules/
+ffuf-desktop/build/bin/
+ffuf-desktop/frontend/node_modules/
+ffuf-desktop/frontend/dist/
