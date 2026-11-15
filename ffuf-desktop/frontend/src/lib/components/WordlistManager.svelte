@@ -42,6 +42,7 @@
 
   let selected = $derived(wordlistsStore.selectedWordlist);
   let stats = $derived(wordlistsStore.selectedStats);
+  let health = $derived(wordlistsStore.selectedHealth);
   let totalLines = $derived(wordlistsStore.currentPage.total_lines || 0);
 
   onMount(() => {
@@ -124,6 +125,23 @@
   function applyStripEmpty() {
     editorLines = editorLines.filter((l) => l.trim().length > 0);
     isDirty = true;
+    toastStore.info('Stripped empty lines from current page');
+  }
+
+  async function handleCleanWordlist() {
+    if (!selected) return;
+    try {
+      const res = await wordlistsStore.cleanWordlist(selected.id);
+      if (res.empty_lines_removed > 0 || res.lines_trimmed > 0) {
+        toastStore.success(
+          `Cleaned "${selected.name}": removed ${res.empty_lines_removed.toLocaleString()} blank lines, trimmed ${res.lines_trimmed.toLocaleString()} lines`
+        );
+      } else {
+        toastStore.info(`Wordlist "${selected.name}" is verified clean (0 blank lines)`);
+      }
+    } catch (e: any) {
+      toastStore.error(`Clean failed: ${e?.message || e}`);
+    }
   }
 
   function applyPrefixSuffix() {
@@ -343,6 +361,12 @@
     if (isMeta && e.shiftKey && e.key.toLowerCase() === 't') {
       e.preventDefault();
       applyTrim();
+      return;
+    }
+
+    if (isMeta && e.shiftKey && e.key.toLowerCase() === 'c') {
+      e.preventDefault();
+      handleCleanWordlist();
       return;
     }
 
@@ -633,9 +657,27 @@
         {/if}
       </div>
 
+      <!-- Health Warning Strip (when blank lines or defects detected) -->
+      {#if health && !health.is_clean && health.blank_lines_count > 0}
+        <div class="health-warning-strip font-mono">
+          <div class="health-warning-left">
+            <Icon name="alert-triangle" size={13} color="#ff9500" />
+            <span>Wordlist contains {health.blank_lines_count.toLocaleString()} blank lines that may corrupt fuzzing payloads</span>
+          </div>
+          <button class="btn-clean-pill" onclick={handleCleanWordlist} title="Remove all blank lines and trim whitespace (Shift+Cmd+C)">
+            <Icon name="check" size={12} />
+            <span>Auto-Clean Now</span>
+          </button>
+        </div>
+      {/if}
+
       <!-- Editor Toolbar (Transformations & Pagination) -->
       <div class="editor-toolbar">
         <div class="tools-group">
+          <button class="tool-btn btn-tool-clean" onclick={handleCleanWordlist} title="Verify and clean all blank lines (Shift+Cmd+C)">
+            <Icon name="check" size={12} />
+            <span>Clean Blanks</span>
+          </button>
           <button class="tool-btn" onclick={applyDeduplicate} title="Remove duplicate lines (Shift+Cmd+D)">
             <Icon name="sliders" size={12} />
             <span>Dedupe</span>
@@ -875,6 +917,7 @@
           <div class="shortcut-row"><span class="shortcut-key">Shift+Cmd+D</span><span class="shortcut-desc">Deduplicate lines</span></div>
           <div class="shortcut-row"><span class="shortcut-key">Shift+Cmd+S</span><span class="shortcut-desc">Sort lines alphabetically</span></div>
           <div class="shortcut-row"><span class="shortcut-key">Shift+Cmd+T</span><span class="shortcut-desc">Trim whitespace</span></div>
+          <div class="shortcut-row"><span class="shortcut-key">Shift+Cmd+C</span><span class="shortcut-desc">Auto-clean blank lines</span></div>
           <div class="shortcut-row"><span class="shortcut-key">?</span><span class="shortcut-desc">Toggle this shortcuts list</span></div>
         </div>
       </div>
@@ -1361,6 +1404,44 @@
     color: var(--text);
   }
 
+  .health-warning-strip {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 6px 16px;
+    background-color: rgba(255, 149, 0, 0.12);
+    border-bottom: 1px solid rgba(255, 149, 0, 0.28);
+    font-size: 11px;
+    color: #ff9500;
+  }
+
+  .health-warning-left {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-weight: 500;
+  }
+
+  .btn-clean-pill {
+    height: 22px;
+    padding: 0 10px;
+    background-color: #ff9500;
+    color: #ffffff;
+    border: none;
+    border-radius: 12px;
+    font-size: 10.5px;
+    font-weight: 600;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    transition: background-color 0.1s ease;
+  }
+
+  .btn-clean-pill:hover {
+    background-color: #e08500;
+  }
+
   .editor-toolbar {
     height: 32px;
     background-color: var(--bg-subtle);
@@ -1395,6 +1476,11 @@
 
   .tool-btn:hover {
     background-color: var(--surface-hover);
+  }
+
+  .btn-tool-clean {
+    color: var(--accent);
+    border-color: rgba(0, 122, 255, 0.3);
   }
 
   .pagination-group {

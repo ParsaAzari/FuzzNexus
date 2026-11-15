@@ -40,3 +40,22 @@ type WordlistStatsDTO struct {
 	AvgLineLen  float64 `json:"avg_line_len"`
 	MaxLineLen  int     `json:"max_line_len"`
 }
+
+// CleanResultDTO represents the outcome of a wordlist verification and cleaning operation.
+type CleanResultDTO struct {
+	ID                int64 `json:"id"`
+	LinesBefore       int64 `json:"lines_before"`
+	LinesAfter        int64 `json:"lines_after"`
+	EmptyLinesRemoved int64 `json:"empty_lines_removed"`
+	LinesTrimmed      int64 `json:"lines_trimmed"`
+}
+
+// WordlistHealthDTO summarizes the hygiene of a wordlist file.
+type WordlistHealthDTO struct {
+	ID              int64 `json:"id"`
+	TotalLines      int64 `json:"total_lines"`
+	BlankLinesCount int64 `json:"blank_lines_count"`
+	HasWhitespace   bool  `json:"has_whitespace"`
+	HasCRLF         bool  `json:"has_crlf"`
+	IsClean         bool  `json:"is_clean"`
+}

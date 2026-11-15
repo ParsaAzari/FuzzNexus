@@ -234,6 +234,20 @@ func (a *App) ExportWordlist(id int64, targetPath string) error {
 	return a.service.ExportWordlist(id, targetPath)
 }
 
+func (a *App) VerifyWordlist(id int64) (*wordlists.WordlistHealthDTO, error) {
+	if a.service == nil {
+		return nil, errors.New("bridge service is not available")
+	}
+	return a.service.VerifyWordlist(id)
+}
+
+func (a *App) CleanWordlist(id int64) (*wordlists.CleanResultDTO, error) {
+	if a.service == nil {
+		return nil, errors.New("bridge service is not available")
+	}
+	return a.service.CleanWordlist(id)
+}
+
 func (a *App) SelectWordlistDialog(title string) (string, error) {
 	if a.service == nil {
 		return "", errors.New("bridge service is not available")

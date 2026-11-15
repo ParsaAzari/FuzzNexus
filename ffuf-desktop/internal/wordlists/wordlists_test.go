@@ -363,3 +363,100 @@ func TestDeleteWordlistsBatch(t *testing.T) {
 		t.Fatalf("expected only wl3 remaining, got: %+v", list)
 	}
 }
+
+func TestWordlistVerificationAndAutoCleaning(t *testing.T) {
+	db, tempDir := setupTestDB(t)
+	defer db.Close()
+	defer os.RemoveAll(tempDir)
+
+	mgr, err := wordlists.NewManager(tempDir, db)
+	if err != nil {
+		t.Fatalf("NewManager failed: %v", err)
+	}
+
+	// 1. Create with dirty lines (empty lines, leading/trailing whitespace, CRLF)
+	dirtyContent := "  admin  \r\n\r\n   \r\napi\r\n\r\nlogin   \r\n"
+	wl, err := mgr.CreateWordlist("dirty.txt", dirtyContent)
+	if err != nil {
+		t.Fatalf("CreateWordlist failed: %v", err)
+	}
+
+	// Should have auto-cleaned to 3 valid lines ("admin", "api", "login")
+	if wl.LineCount != 3 {
+		t.Fatalf("expected 3 clean lines after auto-clean on create, got %d", wl.LineCount)
+	}
+
+	page, err := mgr.ReadWordlistPage(wl.ID, 0, 10)
+	if err != nil {
+		t.Fatalf("ReadWordlistPage failed: %v", err)
+	}
+	expected := []string{"admin", "api", "login"}
+	if len(page.Lines) != 3 || page.Lines[0] != "admin" || page.Lines[1] != "api" || page.Lines[2] != "login" {
+		t.Fatalf("unexpected lines after auto-clean: %+v (expected %+v)", page.Lines, expected)
+	}
+
+	// 2. Verification of a clean wordlist
+	health, err := mgr.VerifyWordlist(wl.ID)
+	if err != nil {
+		t.Fatalf("VerifyWordlist failed: %v", err)
+	}
+	if !health.IsClean || health.BlankLinesCount != 0 {
+		t.Fatalf("expected clean health, got: %+v", health)
+	}
+
+	// 3. Manually create an external dirty file to test LinkWordlistPath & Verify/Clean
+	externalDirtyPath := filepath.Join(tempDir, "external_dirty.txt")
+	rawDirtyData := "route1\n\n   \nroute2\r\n  route3  \n\n"
+	if err := os.WriteFile(externalDirtyPath, []byte(rawDirtyData), 0600); err != nil {
+		t.Fatalf("failed to write external dirty file: %v", err)
+	}
+
+	linkedWl, err := mgr.LinkWordlistPath(externalDirtyPath)
+	if err != nil {
+		t.Fatalf("LinkWordlistPath failed: %v", err)
+	}
+
+	// Verify should report issues
+	dirtyHealth, err := mgr.VerifyWordlist(linkedWl.ID)
+	if err != nil {
+		t.Fatalf("VerifyWordlist failed: %v", err)
+	}
+	if dirtyHealth.IsClean {
+		t.Fatalf("expected IsClean == false for dirty wordlist")
+	}
+	if dirtyHealth.BlankLinesCount != 3 {
+		t.Fatalf("expected 3 blank lines, got: %d", dirtyHealth.BlankLinesCount)
+	}
+	if !dirtyHealth.HasWhitespace || !dirtyHealth.HasCRLF {
+		t.Fatalf("expected whitespace and CRLF flags to be true: %+v", dirtyHealth)
+	}
+
+	// 4. Test Lock protection during CleanWordlist
+	mgr.LockWordlist(linkedWl.Path)
+	_, err = mgr.CleanWordlist(linkedWl.ID)
+	if err != wordlists.ErrWordlistLocked {
+		t.Fatalf("expected ErrWordlistLocked on CleanWordlist, got: %v", err)
+	}
+	mgr.UnlockWordlist(linkedWl.Path)
+
+	// 5. CleanWordlist execution
+	cleanRes, err := mgr.CleanWordlist(linkedWl.ID)
+	if err != nil {
+		t.Fatalf("CleanWordlist failed: %v", err)
+	}
+	if cleanRes.EmptyLinesRemoved != 3 {
+		t.Fatalf("expected 3 empty lines removed, got: %d", cleanRes.EmptyLinesRemoved)
+	}
+	if cleanRes.LinesAfter != 3 {
+		t.Fatalf("expected 3 lines after cleaning, got: %d", cleanRes.LinesAfter)
+	}
+
+	// Verify health again after clean
+	postCleanHealth, err := mgr.VerifyWordlist(linkedWl.ID)
+	if err != nil {
+		t.Fatalf("post-clean VerifyWordlist failed: %v", err)
+	}
+	if !postCleanHealth.IsClean || postCleanHealth.BlankLinesCount != 0 {
+		t.Fatalf("expected clean health after CleanWordlist, got: %+v", postCleanHealth)
+	}
+}

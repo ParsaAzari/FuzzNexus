@@ -14,7 +14,22 @@ vi.mock('../../../wailsjs/go/main/App', () => ({
   LinkWordlistPath: vi.fn(),
   GetWordlistStats: vi.fn(),
   ExportWordlist: vi.fn(),
-  SelectWordlistDialog: vi.fn()
+  SelectWordlistDialog: vi.fn(),
+  VerifyWordlist: vi.fn().mockResolvedValue({
+    id: 1,
+    total_lines: 100,
+    blank_lines_count: 5,
+    has_whitespace: true,
+    has_crlf: false,
+    is_clean: false
+  }),
+  CleanWordlist: vi.fn().mockResolvedValue({
+    id: 1,
+    lines_before: 100,
+    lines_after: 95,
+    empty_lines_removed: 5,
+    lines_trimmed: 10
+  })
 }));
 
 describe('WordlistsStore Multi-selection & Batch Actions', () => {
@@ -98,5 +113,16 @@ describe('WordlistsStore Multi-selection & Batch Actions', () => {
 
     // Since selectedID was 1 (deleted), it automatically selects the first remaining wordlist (3)
     expect(wordlistsStore.selectedID).toBe(3);
+  });
+
+  it('verifies wordlist health and automatically updates state on cleanWordlist', async () => {
+    await wordlistsStore.loadHealth(1);
+    expect(wordlistsStore.selectedHealth).not.toBeNull();
+    expect(wordlistsStore.selectedHealth?.is_clean).toBe(false);
+    expect(wordlistsStore.selectedHealth?.blank_lines_count).toBe(5);
+
+    const cleanRes = await wordlistsStore.cleanWordlist(1);
+    expect(cleanRes.empty_lines_removed).toBe(5);
+    expect(cleanRes.lines_trimmed).toBe(10);
   });
 });

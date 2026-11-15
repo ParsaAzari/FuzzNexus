@@ -7,6 +7,8 @@ import {bridge} from '../models';
 
 export function AddLiveFilter(arg1:string,arg2:string):Promise<void>;
 
+export function CleanWordlist(arg1:number):Promise<wordlists.CleanResultDTO>;
+
 export function CreateWordlist(arg1:string,arg2:string):Promise<wordlists.WordlistDTO>;
 
 export function DeleteFilterPreset(arg1:string):Promise<void>;
@@ -60,3 +62,5 @@ export function StopScan():Promise<void>;
 export function UpdateRate(arg1:number):Promise<void>;
 
 export function UpdateWordlist(arg1:number,arg2:string):Promise<void>;
+
+export function VerifyWordlist(arg1:number):Promise<wordlists.WordlistHealthDTO>;

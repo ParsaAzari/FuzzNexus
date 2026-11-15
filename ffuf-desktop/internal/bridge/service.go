@@ -523,6 +523,16 @@ func (s *Service) ExportWordlist(id int64, targetPath string) error {
 	return s.wordlists.ExportWordlist(id, targetPath)
 }
 
+// VerifyWordlist inspects a wordlist for blank lines and whitespace defects.
+func (s *Service) VerifyWordlist(id int64) (*wordlists.WordlistHealthDTO, error) {
+	return s.wordlists.VerifyWordlist(id)
+}
+
+// CleanWordlist strips blank lines and trims whitespace from a wordlist.
+func (s *Service) CleanWordlist(id int64) (*wordlists.CleanResultDTO, error) {
+	return s.wordlists.CleanWordlist(id)
+}
+
 // SelectWordlistDialog displays a native file chooser dialog.
 func (s *Service) SelectWordlistDialog(title string) (string, error) {
 	s.wailsCtxMu.RLock()

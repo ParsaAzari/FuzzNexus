@@ -328,6 +328,26 @@ export namespace store {
 
 export namespace wordlists {
 	
+	export class CleanResultDTO {
+	    id: number;
+	    lines_before: number;
+	    lines_after: number;
+	    empty_lines_removed: number;
+	    lines_trimmed: number;
+	
+	    static createFrom(source: any = {}) {
+	        return new CleanResultDTO(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.id = source["id"];
+	        this.lines_before = source["lines_before"];
+	        this.lines_after = source["lines_after"];
+	        this.empty_lines_removed = source["empty_lines_removed"];
+	        this.lines_trimmed = source["lines_trimmed"];
+	    }
+	}
 	export class WordlistDTO {
 	    id: number;
 	    name: string;
@@ -373,6 +393,28 @@ export namespace wordlists {
 		    }
 		    return a;
 		}
+	}
+	export class WordlistHealthDTO {
+	    id: number;
+	    total_lines: number;
+	    blank_lines_count: number;
+	    has_whitespace: boolean;
+	    has_crlf: boolean;
+	    is_clean: boolean;
+	
+	    static createFrom(source: any = {}) {
+	        return new WordlistHealthDTO(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.id = source["id"];
+	        this.total_lines = source["total_lines"];
+	        this.blank_lines_count = source["blank_lines_count"];
+	        this.has_whitespace = source["has_whitespace"];
+	        this.has_crlf = source["has_crlf"];
+	        this.is_clean = source["is_clean"];
+	    }
 	}
 	export class WordlistPageDTO {
 	    lines: string[];

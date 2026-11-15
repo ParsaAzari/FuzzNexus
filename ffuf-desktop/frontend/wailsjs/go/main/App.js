@@ -6,6 +6,10 @@ export function AddLiveFilter(arg1, arg2) {
   return window['go']['main']['App']['AddLiveFilter'](arg1, arg2);
 }
 
+export function CleanWordlist(arg1) {
+  return window['go']['main']['App']['CleanWordlist'](arg1);
+}
+
 export function CreateWordlist(arg1, arg2) {
   return window['go']['main']['App']['CreateWordlist'](arg1, arg2);
 }
@@ -112,4 +116,8 @@ export function UpdateRate(arg1) {
 
 export function UpdateWordlist(arg1, arg2) {
   return window['go']['main']['App']['UpdateWordlist'](arg1, arg2);
+}
+
+export function VerifyWordlist(arg1) {
+  return window['go']['main']['App']['VerifyWordlist'](arg1);
 }

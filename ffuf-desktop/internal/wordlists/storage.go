@@ -235,3 +235,172 @@ func ComputeStats(path string) (*WordlistStatsDTO, error) {
 		MaxLineLen:  maxLen,
 	}, nil
 }
+
+// VerifyWordlistFile streams through path and analyzes its hygiene.
+func VerifyWordlistFile(path string) (*WordlistHealthDTO, error) {
+	file, err := os.Open(path)
+	if err != nil {
+		return nil, err
+	}
+	defer file.Close()
+
+	reader := bufio.NewReader(file)
+	var totalLines int64 = 0
+	var blankLinesCount int64 = 0
+	hasWhitespace := false
+	hasCRLF := false
+
+	for {
+		lineBytes, err := reader.ReadBytes('\n')
+		if len(lineBytes) > 0 {
+			totalLines++
+			if strings.Contains(string(lineBytes), "\r") {
+				hasCRLF = true
+			}
+			raw := strings.TrimRight(string(lineBytes), "\r\n")
+			trimmed := strings.TrimSpace(raw)
+			if trimmed == "" {
+				blankLinesCount++
+			} else if trimmed != raw {
+				hasWhitespace = true
+			}
+		}
+		if err != nil {
+			if err == io.EOF {
+				break
+			}
+			return nil, err
+		}
+	}
+
+	isClean := blankLinesCount == 0 && !hasWhitespace && !hasCRLF
+
+	return &WordlistHealthDTO{
+		TotalLines:      totalLines,
+		BlankLinesCount: blankLinesCount,
+		HasWhitespace:   hasWhitespace,
+		HasCRLF:         hasCRLF,
+		IsClean:         isClean,
+	}, nil
+}
+
+// CleanWordlistFile streams through path, removing blank/empty lines, trimming whitespace,
+// normalizing CRLF line endings, and atomically writing the clean version back.
+func CleanWordlistFile(path string) (*CleanResultDTO, error) {
+	cleanPath, err := ValidatePath(path)
+	if err != nil {
+		return nil, err
+	}
+
+	srcFile, err := os.Open(cleanPath)
+	if err != nil {
+		return nil, err
+	}
+	defer srcFile.Close()
+
+	dir := filepath.Dir(cleanPath)
+	tmpFile, err := os.CreateTemp(dir, ".clean-wordlist-*")
+	if err != nil {
+		return nil, fmt.Errorf("failed to create temp file: %w", err)
+	}
+	tmpName := tmpFile.Name()
+
+	cleanup := true
+	defer func() {
+		if cleanup {
+			_ = tmpFile.Close()
+			_ = os.Remove(tmpName)
+		}
+	}()
+
+	if err := tmpFile.Chmod(0600); err != nil {
+		return nil, fmt.Errorf("failed to chmod temp file: %w", err)
+	}
+
+	writer := bufio.NewWriter(tmpFile)
+	scanner := bufio.NewScanner(srcFile)
+	buf := make([]byte, 64*1024)
+	scanner.Buffer(buf, 64*1024)
+
+	var linesBefore int64 = 0
+	var linesAfter int64 = 0
+	var emptyLinesRemoved int64 = 0
+	var linesTrimmed int64 = 0
+
+	for scanner.Scan() {
+		linesBefore++
+		raw := scanner.Text()
+
+		// Strip carriage return and leading/trailing whitespace
+		trimmed := strings.TrimSpace(strings.ReplaceAll(raw, "\r", ""))
+		if trimmed == "" {
+			emptyLinesRemoved++
+			continue
+		}
+
+		if trimmed != raw {
+			linesTrimmed++
+		}
+
+		if _, err := writer.WriteString(trimmed + "\n"); err != nil {
+			return nil, fmt.Errorf("failed writing clean line: %w", err)
+		}
+		linesAfter++
+	}
+
+	if err := scanner.Err(); err != nil && err != io.EOF {
+		return nil, err
+	}
+
+	if err := writer.Flush(); err != nil {
+		return nil, fmt.Errorf("failed flushing buffer: %w", err)
+	}
+
+	if err := tmpFile.Sync(); err != nil {
+		return nil, fmt.Errorf("failed syncing temp file: %w", err)
+	}
+
+	if err := tmpFile.Close(); err != nil {
+		return nil, fmt.Errorf("failed closing temp file: %w", err)
+	}
+	_ = srcFile.Close()
+
+	if err := os.Rename(tmpName, cleanPath); err != nil {
+		return nil, fmt.Errorf("failed to atomically rename cleaned file: %w", err)
+	}
+
+	cleanup = false
+
+	return &CleanResultDTO{
+		LinesBefore:       linesBefore,
+		LinesAfter:        linesAfter,
+		EmptyLinesRemoved: emptyLinesRemoved,
+		LinesTrimmed:      linesTrimmed,
+	}, nil
+}
+
+// CleanStringContent removes blank lines and trims whitespace from a multi-line string.
+func CleanStringContent(content string) (string, int64, int64) {
+	lines := strings.Split(strings.ReplaceAll(content, "\r\n", "\n"), "\n")
+	var clean []string
+	var emptyCount int64 = 0
+	var trimmedCount int64 = 0
+
+	for _, l := range lines {
+		trimmed := strings.TrimSpace(l)
+		if trimmed == "" {
+			emptyCount++
+			continue
+		}
+		if trimmed != l {
+			trimmedCount++
+		}
+		clean = append(clean, trimmed)
+	}
+
+	res := strings.Join(clean, "\n")
+	if len(clean) > 0 {
+		res += "\n"
+	}
+	return res, emptyCount, trimmedCount
+}

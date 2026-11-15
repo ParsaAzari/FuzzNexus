@@ -10,15 +10,18 @@ import {
   LinkWordlistPath,
   GetWordlistStats,
   ExportWordlist,
-  SelectWordlistDialog
+  SelectWordlistDialog,
+  VerifyWordlist,
+  CleanWordlist
 } from '../../../wailsjs/go/main/App';
-import type { WordlistDTO, WordlistPageDTO, WordlistStatsDTO } from '../types';
+import type { WordlistDTO, WordlistPageDTO, WordlistStatsDTO, CleanResultDTO, WordlistHealthDTO } from '../types';
 
 class WordlistsStore {
   items = $state<WordlistDTO[]>([]);
   selectedID = $state<number | null>(null);
   checkedIDs = $state<number[]>([]);
   selectedStats = $state<WordlistStatsDTO | null>(null);
+  selectedHealth = $state<WordlistHealthDTO | null>(null);
   currentPage = $state<WordlistPageDTO>({ lines: [], total_lines: 0, offset: 0, limit: 100 });
   isLoading = $state<boolean>(false);
   isSaving = $state<boolean>(false);
@@ -90,7 +93,8 @@ class WordlistsStore {
   async selectWordlist(id: number) {
     this.selectedID = id;
     this.selectedStats = null;
-    await Promise.all([this.loadPage(0, 100), this.loadStats(id)]);
+    this.selectedHealth = null;
+    await Promise.all([this.loadPage(0, 100), this.loadStats(id), this.loadHealth(id)]);
   }
 
   async loadPage(offset: number = 0, limit: number = 100) {
@@ -108,6 +112,35 @@ class WordlistsStore {
     } catch {
       // Non-fatal if stats calculation fails
       this.selectedStats = null;
+    }
+  }
+
+  async loadHealth(id: number) {
+    try {
+      this.selectedHealth = await VerifyWordlist(id);
+    } catch {
+      // Non-fatal if health check fails
+      this.selectedHealth = null;
+    }
+  }
+
+  async cleanWordlist(id: number): Promise<CleanResultDTO> {
+    this.isSaving = true;
+    this.error = '';
+    try {
+      const res = await CleanWordlist(id);
+      await Promise.all([
+        this.loadWordlists(),
+        this.loadPage(this.currentPage.offset, this.currentPage.limit),
+        this.loadStats(id),
+        this.loadHealth(id)
+      ]);
+      return res;
+    } catch (err: any) {
+      this.error = `Failed to clean wordlist: ${err?.message || err}`;
+      throw err;
+    } finally {
+      this.isSaving = false;
     }
   }
 
@@ -226,7 +259,12 @@ class WordlistsStore {
     this.error = '';
     try {
       await SaveWordlistContent(id, content);
-      await Promise.all([this.loadWordlists(), this.loadPage(this.currentPage.offset, this.currentPage.limit), this.loadStats(id)]);
+      await Promise.all([
+        this.loadWordlists(),
+        this.loadPage(this.currentPage.offset, this.currentPage.limit),
+        this.loadStats(id),
+        this.loadHealth(id)
+      ]);
     } catch (err: any) {
       this.error = `Failed to save content: ${err?.message || err}`;
       throw err;

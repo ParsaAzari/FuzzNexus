@@ -9,6 +9,8 @@ export type SessionDTO = store.SessionDTO;
 export type WordlistDTO = wordlists.WordlistDTO;
 export type WordlistPageDTO = wordlists.WordlistPageDTO;
 export type WordlistStatsDTO = wordlists.WordlistStatsDTO;
+export type CleanResultDTO = wordlists.CleanResultDTO;
+export type WordlistHealthDTO = wordlists.WordlistHealthDTO;
 export interface FilterRule {
   id: string;
   field: string;

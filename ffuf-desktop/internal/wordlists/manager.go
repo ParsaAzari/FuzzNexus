@@ -116,7 +116,8 @@ func (m *Manager) CreateWordlist(name, initialContent string) (*WordlistDTO, err
 	safeFileName := fmt.Sprintf("%d_%s", time.Now().UnixNano(), filepath.Base(name))
 	targetPath := filepath.Join(m.baseDir, safeFileName)
 
-	contentBytes := []byte(initialContent)
+	cleanedContent, _, _ := CleanStringContent(initialContent)
+	contentBytes := []byte(cleanedContent)
 	if err := AtomicWriteFile(targetPath, contentBytes); err != nil {
 		return nil, err
 	}
@@ -296,7 +297,8 @@ func (m *Manager) SaveWordlistContent(id int64, content string) error {
 		return ErrWordlistLocked
 	}
 
-	contentBytes := []byte(content)
+	cleanedContent, _, _ := CleanStringContent(content)
+	contentBytes := []byte(cleanedContent)
 	if err := AtomicWriteFile(path, contentBytes); err != nil {
 		return err
 	}
@@ -344,6 +346,9 @@ func (m *Manager) ImportWordlistFromPath(sourcePath string) (*WordlistDTO, error
 	}
 	_ = destFile.Sync()
 	destFile.Close()
+
+	// Automatically sanitize and clean imported wordlists (removes blank lines, \r, and trims whitespace)
+	_, _ = CleanWordlistFile(targetPath)
 
 	lines, size, err := CountLines(targetPath)
 	if err != nil {
@@ -498,6 +503,71 @@ func (m *Manager) ExportWordlist(id int64, targetPath string) error {
 
 	_, err = io.Copy(destFile, srcFile)
 	return err
+}
+
+// VerifyWordlist analyzes the hygiene of a wordlist file for empty lines and formatting issues.
+func (m *Manager) VerifyWordlist(id int64) (*WordlistHealthDTO, error) {
+	m.mu.RLock()
+	var path string
+	err := m.db.QueryRow("SELECT path FROM wordlists WHERE id = ?", id).Scan(&path)
+	m.mu.RUnlock()
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return nil, ErrFileNotFound
+		}
+		return nil, err
+	}
+
+	health, err := VerifyWordlistFile(path)
+	if err != nil {
+		return nil, err
+	}
+	health.ID = id
+	return health, nil
+}
+
+// CleanWordlist strips blank/empty lines and trims whitespace from the wordlist file atomically,
+// then updates the database records.
+func (m *Manager) CleanWordlist(id int64) (*CleanResultDTO, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	var path string
+	err := m.db.QueryRow("SELECT path FROM wordlists WHERE id = ?", id).Scan(&path)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return nil, ErrFileNotFound
+		}
+		return nil, err
+	}
+
+	clean := filepath.Clean(path)
+	if m.lockedPaths[clean] > 0 {
+		return nil, ErrWordlistLocked
+	}
+
+	res, err := CleanWordlistFile(path)
+	if err != nil {
+		return nil, err
+	}
+	res.ID = id
+
+	lines, size, err := CountLines(path)
+	if err != nil {
+		return nil, err
+	}
+
+	nowStr := time.Now().UTC().Format(time.RFC3339Nano)
+	_, err = m.db.Exec(`
+		UPDATE wordlists
+		SET line_count = ?, size_bytes = ?, updated_at = ?
+		WHERE id = ?
+	`, lines, size, nowStr, id)
+	if err != nil {
+		return nil, err
+	}
+
+	return res, nil
 }
 
 func parseTimeHelper(s string) time.Time {
