@@ -1,79 +1,195 @@
 <script lang="ts">
-  import logo from './assets/images/logo-universal.png'
-  import {Greet} from '../wailsjs/go/main/App.js'
+  import TitleBar from './lib/components/TitleBar.svelte';
+  import ControlBar from './lib/components/ControlBar.svelte';
+  import VirtualGrid from './lib/components/VirtualGrid.svelte';
+  import { scanStore } from './lib/stores/scan.svelte';
+  import { resultsStore } from './lib/stores/results.svelte';
+  import { ExportResults } from '../wailsjs/go/main/App';
 
-  let resultText: string = "Please enter your name below 👇"
-  let name: string
+  let selectedItem = $derived(resultsStore.selectedItem);
+  let isExporting = $state<boolean>(false);
+  let exportMessage = $state<string>('');
 
-  function greet(): void {
-    Greet(name).then(result => resultText = result)
+  async function handleExport(format: 'json' | 'csv') {
+    if (scanStore.sessionID <= 0 || resultsStore.items.length === 0) return;
+    isExporting = true;
+    exportMessage = '';
+    try {
+      const fileName = `ffuf_session_${scanStore.sessionID}_results.${format}`;
+      // Export to current user home directory or downloads
+      const targetPath = `${fileName}`;
+      await ExportResults(scanStore.sessionID, format, targetPath);
+      exportMessage = `Exported ${resultsStore.items.length} items to ${targetPath}`;
+      setTimeout(() => (exportMessage = ''), 4000);
+    } catch (err: any) {
+      exportMessage = `Export failed: ${err?.message || err}`;
+    } finally {
+      isExporting = false;
+    }
   }
 </script>
 
-<main>
-  <img alt="Wails logo" id="logo" src="{logo}">
-  <div class="result" id="result">{resultText}</div>
-  <div class="input-box" id="input">
-    <input autocomplete="off" bind:value={name} class="input" id="name" type="text"/>
-    <button class="btn" on:click={greet}>Greet</button>
-  </div>
-</main>
+<div class="app-layout">
+  <!-- Top Navigation & Window Title -->
+  <TitleBar />
+
+  <!-- Scan Execution & Parameters Bar -->
+  <ControlBar />
+
+  <!-- High-Performance Virtualized Results Grid -->
+  <main class="grid-container">
+    <VirtualGrid />
+  </main>
+
+  <!-- Bottom Telemetry & Status Bar -->
+  <footer class="status-bar select-none">
+    <div class="status-bar-left">
+      <span class="status-indicator">
+        <span class="dot" class:active={scanStore.state === 'Running'}></span>
+        Engine: <strong>{scanStore.state}</strong>
+      </span>
+      {#if selectedItem}
+        <span class="selection-pill font-mono">
+          Selected #{selectedItem.id} ({selectedItem.status} • {selectedItem.length} bytes • {selectedItem.duration_ms}ms)
+        </span>
+      {/if}
+      {#if exportMessage}
+        <span class="export-msg">{exportMessage}</span>
+      {/if}
+    </div>
+
+    <div class="status-bar-right">
+      <div class="export-group">
+        <button
+          class="btn-export"
+          onclick={() => handleExport('json')}
+          disabled={isExporting || resultsStore.items.length === 0}
+          title="Export current scan results to JSON file"
+        >
+          Export JSON
+        </button>
+        <button
+          class="btn-export"
+          onclick={() => handleExport('csv')}
+          disabled={isExporting || resultsStore.items.length === 0}
+          title="Export current scan results to CSV file"
+        >
+          Export CSV
+        </button>
+      </div>
+      <span class="font-mono total-label">
+        Total: {resultsStore.items.length.toLocaleString()} items
+      </span>
+    </div>
+  </footer>
+</div>
 
 <style>
-
-  #logo {
-    display: block;
-    width: 50%;
-    height: 50%;
-    margin: auto;
-    padding: 10% 0 0;
-    background-position: center;
-    background-repeat: no-repeat;
-    background-size: 100% 100%;
-    background-origin: content-box;
+  .app-layout {
+    display: flex;
+    flex-direction: column;
+    width: 100vw;
+    height: 100vh;
+    overflow: hidden;
+    background-color: var(--bg);
+    color: var(--text);
   }
 
-  .result {
-    height: 20px;
-    line-height: 20px;
-    margin: 1.5rem auto;
+  .grid-container {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    min-height: 0;
+    position: relative;
   }
 
-  .input-box .btn {
-    width: 60px;
-    height: 30px;
-    line-height: 30px;
-    border-radius: 3px;
-    border: none;
-    margin: 0 0 0 20px;
-    padding: 0 8px;
+  .status-bar {
+    height: 24px;
+    background-color: var(--bg-subtle);
+    border-top: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 12px;
+    font-size: 11px;
+    color: var(--text-secondary);
+  }
+
+  .status-bar-left {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .status-indicator {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .status-indicator .dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background-color: #8E8E93;
+  }
+
+  .status-indicator .dot.active {
+    background-color: #34C759;
+    box-shadow: 0 0 6px #34C759;
+  }
+
+  .status-indicator strong {
+    color: var(--text);
+  }
+
+  .selection-pill {
+    background-color: var(--surface);
+    border: 1px solid var(--border);
+    padding: 1px 6px;
+    border-radius: 4px;
+    font-size: 10px;
+    color: var(--text);
+  }
+
+  .export-msg {
+    color: var(--accent);
+    font-weight: 500;
+  }
+
+  .status-bar-right {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .export-group {
+    display: flex;
+    gap: 4px;
+  }
+
+  .btn-export {
+    all: unset;
+    font-size: 10px;
+    padding: 1px 6px;
+    background-color: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 4px;
     cursor: pointer;
+    color: var(--text);
+    transition: background 0.1s ease;
   }
 
-  .input-box .btn:hover {
-    background-image: linear-gradient(to top, #cfd9df 0%, #e2ebf0 100%);
-    color: #333333;
+  .btn-export:hover:not(:disabled) {
+    background-color: var(--surface-hover);
   }
 
-  .input-box .input {
-    border: none;
-    border-radius: 3px;
-    outline: none;
-    height: 30px;
-    line-height: 30px;
-    padding: 0 10px;
-    background-color: rgba(240, 240, 240, 1);
-    -webkit-font-smoothing: antialiased;
+  .btn-export:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
   }
 
-  .input-box .input:hover {
-    border: none;
-    background-color: rgba(255, 255, 255, 1);
+  .total-label {
+    font-size: 10px;
   }
-
-  .input-box .input:focus {
-    border: none;
-    background-color: rgba(255, 255, 255, 1);
-  }
-
 </style>
