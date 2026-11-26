@@ -35,8 +35,8 @@ func createApplicationMenu(app *App) *menu.Menu {
 	helpMenu.AddText("Developer Website (parsaazari.com)", nil, func(_ *menu.CallbackData) {
 		_ = app.OpenURL("https://parsaazari.com/")
 	})
-	helpMenu.AddText("GitHub Repository (parsaazari)", nil, func(_ *menu.CallbackData) {
-		_ = app.OpenURL("https://github.com/parsaazari")
+	helpMenu.AddText("GitHub Repository (FuzzNexus)", nil, func(_ *menu.CallbackData) {
+		_ = app.OpenURL("https://github.com/ParsaAzari/FuzzNexus")
 	})
 	helpMenu.AddSeparator()
 	helpMenu.AddText("About FuzzNexus", keys.CmdOrCtrl("i"), func(_ *menu.CallbackData) {

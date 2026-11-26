@@ -110,8 +110,8 @@
           <button
             type="button"
             class="link-card"
-            onclick={() => openLink('https://github.com/parsaazari')}
-            title="Open github.com/parsaazari in browser"
+            onclick={() => openLink('https://github.com/ParsaAzari/FuzzNexus')}
+            title="Open github.com/ParsaAzari/FuzzNexus in browser"
           >
             <div class="link-icon-box github-icon-box">
               <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
@@ -120,10 +120,10 @@
             </div>
             <div class="link-info">
               <div class="link-title-wrap">
-                <span class="link-title font-mono">github.com/parsaazari</span>
+                <span class="link-title font-mono">github.com/ParsaAzari/FuzzNexus</span>
                 <Icon name="external-link" size={12} class="link-arrow" />
               </div>
-              <span class="link-desc">Official GitHub & Developer Projects</span>
+              <span class="link-desc">Source Code, Releases &amp; Documentation</span>
             </div>
           </button>
         </div>
@@ -146,7 +146,7 @@
           </div>
           <div class="spec-pill">
             <span class="spec-key">License</span>
-            <span class="spec-val">MIT Licensed / Open Source</span>
+            <span class="spec-val">MIT License</span>
           </div>
         </div>
       </div>
@@ -188,7 +188,7 @@
   .about-dialog {
     position: relative;
     width: 100%;
-    max-width: 520px;
+    max-width: 544px;
     background: var(--bg-surface);
     border: 1px solid var(--border);
     border-radius: var(--radius-lg, 14px);
@@ -430,7 +430,9 @@
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding: 6px 10px;
+    gap: 10px;
+    min-width: 0;
+    padding: 7px 12px;
     background: var(--bg-subtle);
     border: 1px solid var(--border);
     border-radius: 6px;
@@ -439,12 +441,15 @@
 
   .spec-key {
     color: var(--text-muted);
+    flex-shrink: 0;
   }
 
   .spec-val {
     font-weight: 600;
     color: var(--text);
-    font-family: monospace;
+    font-family: var(--font-mono, monospace);
+    white-space: nowrap;
+    text-align: right;
   }
 
   .about-footer {

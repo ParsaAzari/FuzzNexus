@@ -58,8 +58,8 @@ func TestAnalyzeWordlistRisks_HighAndLow(t *testing.T) {
 
 func TestCreateSanitizedSandboxWordlist_NonDestructive(t *testing.T) {
 	db, tempDir := setupTestDB(t)
-	defer db.Close()
 	defer os.RemoveAll(tempDir)
+	defer db.Close()
 
 	mgr, err := wordlists.NewManager(tempDir, db)
 	if err != nil {

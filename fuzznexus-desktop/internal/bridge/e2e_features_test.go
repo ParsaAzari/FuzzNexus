@@ -491,7 +491,7 @@ func TestE2E_AdvancedCLIFeaturesPart2(t *testing.T) {
 	// 7. Command Input (--input-cmd executes command per iteration with FFUF_NUM)
 	inputCmd := "printf cmd_hit"
 	if runtime.GOOS == "windows" {
-		inputCmd = "<nul set /p=cmd_hit"
+		inputCmd = "set /p=cmd_hit<nul & exit 0"
 	}
 	sidCmd, err := svc.StartScan(ScanRequestDTO{
 		URL:           srv.URL + "/cmd/FUZZ",

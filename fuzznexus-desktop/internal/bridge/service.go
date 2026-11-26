@@ -1107,10 +1107,12 @@ func writeHTMLExport(f *os.File, sessionID int64, results []output.ResultDTO) er
 // Close gracefully terminates any running scan and releases store/blob resources.
 func (s *Service) Close() error {
 	s.sessionMu.Lock()
-	if s.activeSession != nil {
-		_ = s.activeSession.Stop()
-	}
+	sess := s.activeSession
 	s.sessionMu.Unlock()
+	if sess != nil {
+		_ = sess.Stop()
+		sess.Wait()
+	}
 
 	var errs []error
 	if s.blobs != nil {

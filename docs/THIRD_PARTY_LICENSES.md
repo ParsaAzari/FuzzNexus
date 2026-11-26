@@ -20,8 +20,8 @@ http://scripts.sil.org/OFL
 
 ## 2. Core Go Dependencies
 
-### ffuf v2
-Copyright (c) 2018-2024 Jarno Niemela
+### ffuf
+Copyright (c) 2019-2024 Joona Hoikkala
 License: MIT License
 https://github.com/ffuf/ffuf
 

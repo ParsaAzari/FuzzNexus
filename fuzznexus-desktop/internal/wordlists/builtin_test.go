@@ -100,8 +100,8 @@ func TestBuiltinSeedingAndIdempotency(t *testing.T) {
 
 func TestResetBuiltinWordlist(t *testing.T) {
 	db, tempDir := setupTestDB(t)
-	defer db.Close()
 	defer os.RemoveAll(tempDir)
+	defer db.Close()
 
 	mgr, err := wordlists.NewManager(tempDir, db)
 	if err != nil {
@@ -165,8 +165,8 @@ func TestResetBuiltinWordlist(t *testing.T) {
 
 func TestBuiltinScanLockSafety(t *testing.T) {
 	db, tempDir := setupTestDB(t)
-	defer db.Close()
 	defer os.RemoveAll(tempDir)
+	defer db.Close()
 
 	mgr, err := wordlists.NewManager(tempDir, db)
 	if err != nil {
@@ -210,8 +210,8 @@ func TestBuiltinScanLockSafety(t *testing.T) {
 
 func TestRestoreAllBuiltinWordlists(t *testing.T) {
 	db, tempDir := setupTestDB(t)
-	defer db.Close()
 	defer os.RemoveAll(tempDir)
+	defer db.Close()
 
 	mgr, err := wordlists.NewManager(tempDir, db)
 	if err != nil {

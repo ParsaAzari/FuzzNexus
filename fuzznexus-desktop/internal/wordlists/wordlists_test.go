@@ -166,8 +166,8 @@ func TestWordlistCRUD(t *testing.T) {
 
 func TestActiveScanLock(t *testing.T) {
 	db, tempDir := setupTestDB(t)
-	defer db.Close()
 	defer os.RemoveAll(tempDir)
+	defer db.Close()
 
 	mgr, err := wordlists.NewManager(tempDir, db)
 	if err != nil {
@@ -294,8 +294,8 @@ func TestStreamingLinePaginationAndStats(t *testing.T) {
 
 func TestConcurrentWordlistReads(t *testing.T) {
 	db, tempDir := setupTestDB(t)
-	defer db.Close()
 	defer os.RemoveAll(tempDir)
+	defer db.Close()
 
 	mgr, err := wordlists.NewManager(tempDir, db)
 	if err != nil {
@@ -325,8 +325,8 @@ func TestConcurrentWordlistReads(t *testing.T) {
 
 func TestDeleteWordlistsBatch(t *testing.T) {
 	db, tempDir := setupTestDB(t)
-	defer db.Close()
 	defer os.RemoveAll(tempDir)
+	defer db.Close()
 
 	mgr, err := wordlists.NewManager(tempDir, db)
 	if err != nil {
@@ -403,8 +403,8 @@ func TestDeleteWordlistsBatch(t *testing.T) {
 
 func TestWordlistVerificationAndAutoCleaning(t *testing.T) {
 	db, tempDir := setupTestDB(t)
-	defer db.Close()
 	defer os.RemoveAll(tempDir)
+	defer db.Close()
 
 	mgr, err := wordlists.NewManager(tempDir, db)
 	if err != nil {
@@ -500,8 +500,8 @@ func TestWordlistVerificationAndAutoCleaning(t *testing.T) {
 
 func TestWordlistMetadataAndMerge(t *testing.T) {
 	db, tempDir := setupTestDB(t)
-	defer db.Close()
 	defer os.RemoveAll(tempDir)
+	defer db.Close()
 
 	mgr, err := wordlists.NewManager(tempDir, db)
 	if err != nil {
@@ -574,8 +574,8 @@ func TestWordlistMetadataAndMerge(t *testing.T) {
 
 func TestCategoryCRUD(t *testing.T) {
 	db, tempDir := setupTestDB(t)
-	defer db.Close()
 	defer os.RemoveAll(tempDir)
+	defer db.Close()
 
 	mgr, err := wordlists.NewManager(tempDir, db)
 	if err != nil {
