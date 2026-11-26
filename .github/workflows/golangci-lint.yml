@@ -11,16 +11,30 @@ jobs:
     name: lint
     runs-on: ubuntu-latest
     steps:
+      - uses: actions/checkout@v7
       - uses: actions/setup-go@v7
         with:
           go-version: "1.26"
-      - uses: actions/checkout@v7
       - name: golangci-lint
         uses: golangci/golangci-lint-action@v9
         with:
           # Pinned so a new golangci-lint release cannot change the gate on its own.
           # .golangci.yml keeps the v1 default linter set.
           version: v2.15.0
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: fuzznexus-desktop/frontend/package-lock.json
+
+      - name: Build desktop frontend
+        working-directory: fuzznexus-desktop/frontend
+        run: |
+          npm ci
+          npm run build
+
       - name: golangci-lint (desktop)
         uses: golangci/golangci-lint-action@v9
         with:
