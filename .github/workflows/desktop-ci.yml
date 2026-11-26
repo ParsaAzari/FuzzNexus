@@ -44,6 +44,24 @@ jobs:
           sudo apt-get install -y libwebkit2gtk-4.1-dev || \
             sudo apt-get install -y libwebkit2gtk-4.0-dev
 
+      - name: Add WebKitGTK pkg-config compatibility
+        if: runner.os == 'Linux'
+        run: |
+          if pkg-config --exists webkit2gtk-4.1 && ! pkg-config --exists webkit2gtk-4.0; then
+            webkit_pc="$(pkg-config --variable=pc_path pkg-config | tr ':' '\n' | while read -r pc_dir; do
+              if [ -f "$pc_dir/webkit2gtk-4.1.pc" ]; then
+                printf '%s/webkit2gtk-4.1.pc' "$pc_dir"
+                break
+              fi
+            done)"
+            if [ -z "$webkit_pc" ]; then
+              echo "Could not locate webkit2gtk-4.1.pc"
+              exit 1
+            fi
+            sudo cp "$webkit_pc" "$(dirname "$webkit_pc")/webkit2gtk-4.0.pc"
+            echo "Added Wails compatibility alias for webkit2gtk-4.0"
+          fi
+
       - name: Install Wails CLI
         run: go install github.com/wailsapp/wails/v2/cmd/wails@latest
 
