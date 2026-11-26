@@ -1,7 +1,7 @@
 package filter
 
 import (
-	"github.com/ffuf/ffuf/v2/pkg/ffuf"
+	"github.com/parsaazari/fuzznexus/pkg/fuzznexus"
 )
 
 // FromConfig builds a MatcherManager from the parsed ConfigOptions. It is the pure,
@@ -9,8 +9,8 @@ import (
 // setup is now unit-testable without the CLI flag package. The one CLI-explicit
 // decision - whether to install the default status matcher - needs the global flag
 // set, so it stays in main and is passed in as addDefaultStatusMatcher.
-func FromConfig(opts *ffuf.ConfigOptions, addDefaultStatusMatcher bool) (ffuf.MatcherManager, error) {
-	errs := ffuf.NewMultierror()
+func FromConfig(opts *fuzznexus.ConfigOptions, addDefaultStatusMatcher bool) (fuzznexus.MatcherManager, error) {
+	errs := fuzznexus.NewMultierror()
 	mm := NewMatcherManager()
 
 	if addDefaultStatusMatcher {

@@ -3,13 +3,13 @@ package filter
 import (
 	"testing"
 
-	"github.com/ffuf/ffuf/v2/pkg/ffuf"
+	"github.com/parsaazari/fuzznexus/pkg/fuzznexus"
 )
 
 // resp builds a minimal Response for the non-per-host match path (Request is only
 // dereferenced when perHost is true).
-func resp(status, size int64) *ffuf.Response {
-	return &ffuf.Response{StatusCode: status, ContentLength: size}
+func resp(status, size int64) *fuzznexus.Response {
+	return &fuzznexus.Response{StatusCode: status, ContentLength: size}
 }
 
 // TestMatches_StatusMatcher covers the basic matcher path now that the decision

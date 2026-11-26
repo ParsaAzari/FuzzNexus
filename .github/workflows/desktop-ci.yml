@@ -23,18 +23,18 @@ jobs:
       - name: Set up Go
         uses: actions/setup-go@v5
         with:
-          go-version: '1.24'
+          go-version: '1.26'
           cache: true
           cache-dependency-path: |
             go.sum
-            ffuf-desktop/go.sum
+            fuzznexus-desktop/go.sum
 
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
           node-version: 22
           cache: 'npm'
-          cache-dependency-path: ffuf-desktop/frontend/package.json
+          cache-dependency-path: fuzznexus-desktop/frontend/package.json
 
       - name: Install Linux dependencies
         if: runner.os == 'Linux'
@@ -49,11 +49,11 @@ jobs:
         run: go test -race -count=1 ./pkg/...
 
       - name: Install Frontend Dependencies
-        working-directory: ffuf-desktop/frontend
+        working-directory: fuzznexus-desktop/frontend
         run: npm install
 
       - name: Check Frontend (Typecheck, Test & Build)
-        working-directory: ffuf-desktop/frontend
+        working-directory: fuzznexus-desktop/frontend
         run: |
           npm run check
           npm test
@@ -62,43 +62,43 @@ jobs:
       - name: Verify Production CSP Artifact
         shell: bash
         run: |
-          if grep -q "%CSP_DIRECTIVE%" ffuf-desktop/frontend/dist/index.html; then
+          if grep -q "%CSP_DIRECTIVE%" fuzznexus-desktop/frontend/dist/index.html; then
             echo "Error: %CSP_DIRECTIVE% placeholder remaining in build!"
             exit 1
           fi
-          if grep -q "ws://" ffuf-desktop/frontend/dist/index.html; then
+          if grep -q "ws://" fuzznexus-desktop/frontend/dist/index.html; then
             echo "Error: ws:// found in production CSP!"
             exit 1
           fi
           echo "Production CSP verified cleanly."
 
       - name: Desktop Go Tests
-        working-directory: ffuf-desktop
+        working-directory: fuzznexus-desktop
         run: |
           go vet ./...
           go test -race -count=1 -v ./...
 
       - name: Build Wails Desktop Application
-        working-directory: ffuf-desktop
+        working-directory: fuzznexus-desktop
         run: wails build
 
       - name: Upload Desktop Artifact (macOS)
         if: runner.os == 'macOS'
         uses: actions/upload-artifact@v4
         with:
-          name: ffuf-desktop-macos
-          path: ffuf-desktop/build/bin/ffuf-desktop.app
+          name: fuzznexus-desktop-macos
+          path: fuzznexus-desktop/build/bin/FuzzNexus.app
 
       - name: Upload Desktop Artifact (Windows)
         if: runner.os == 'Windows'
         uses: actions/upload-artifact@v4
         with:
-          name: ffuf-desktop-windows
-          path: ffuf-desktop/build/bin/ffuf-desktop.exe
+          name: fuzznexus-desktop-windows
+          path: fuzznexus-desktop/build/bin/FuzzNexus.exe
 
       - name: Upload Desktop Artifact (Linux)
         if: runner.os == 'Linux'
         uses: actions/upload-artifact@v4
         with:
-          name: ffuf-desktop-linux
-          path: ffuf-desktop/build/bin/ffuf-desktop
+          name: fuzznexus-desktop-linux
+          path: fuzznexus-desktop/build/bin/fuzznexus

@@ -12,7 +12,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/ffuf/ffuf/v2/pkg/ffuf"
+	"github.com/parsaazari/fuzznexus/pkg/fuzznexus"
 )
 
 // gzipBomb returns a gzip stream that decompresses to `decompressed` bytes of
@@ -39,14 +39,14 @@ func gzipBomb(t *testing.T, decompressed int) []byte {
 	return buf.Bytes()
 }
 
-func runnerFor(t *testing.T, url string) (ffuf.RunnerProvider, ffuf.Request) {
+func runnerFor(t *testing.T, url string) (fuzznexus.RunnerProvider, fuzznexus.Request) {
 	t.Helper()
 	ctx, cancel := context.WithCancel(context.Background())
 	t.Cleanup(cancel)
-	conf := ffuf.NewConfig(ctx, cancel)
+	conf := fuzznexus.NewConfig(ctx, cancel)
 	conf.Method = "GET"
 	runner := NewSimpleRunner(&conf, false)
-	req := ffuf.NewRequest(&conf)
+	req := fuzznexus.NewRequest(&conf)
 	req.Method = "GET"
 	req.Url = url
 	return runner, req
@@ -146,17 +146,17 @@ func chunkedBodyServer(t *testing.T, total int) *httptest.Server {
 	}))
 }
 
-func runnerWithConfig(t *testing.T, url string, mutate func(*ffuf.Config)) (ffuf.RunnerProvider, ffuf.Request) {
+func runnerWithConfig(t *testing.T, url string, mutate func(*fuzznexus.Config)) (fuzznexus.RunnerProvider, fuzznexus.Request) {
 	t.Helper()
 	ctx, cancel := context.WithCancel(context.Background())
 	t.Cleanup(cancel)
-	conf := ffuf.NewConfig(ctx, cancel)
+	conf := fuzznexus.NewConfig(ctx, cancel)
 	conf.Method = "GET"
 	if mutate != nil {
 		mutate(&conf)
 	}
 	runner := NewSimpleRunner(&conf, false)
-	req := ffuf.NewRequest(&conf)
+	req := fuzznexus.NewRequest(&conf)
 	req.Method = "GET"
 	req.Url = url
 	return runner, req
@@ -189,10 +189,10 @@ func TestExecute_SnapshotIsBoundedWithOutputFeatures(t *testing.T) {
 
 	cases := []struct {
 		name   string
-		mutate func(*ffuf.Config)
+		mutate func(*fuzznexus.Config)
 	}{
-		{"output directory", func(c *ffuf.Config) { c.OutputDirectory = t.TempDir() }},
-		{"audit log", func(c *ffuf.Config) { c.AuditLog = filepath.Join(t.TempDir(), "audit.log") }},
+		{"output directory", func(c *fuzznexus.Config) { c.OutputDirectory = t.TempDir() }},
+		{"audit log", func(c *fuzznexus.Config) { c.AuditLog = filepath.Join(t.TempDir(), "audit.log") }},
 	}
 
 	for _, tc := range cases {
@@ -201,7 +201,7 @@ func TestExecute_SnapshotIsBoundedWithOutputFeatures(t *testing.T) {
 			defer srv.Close()
 
 			runner, req := runnerWithConfig(t, srv.URL+"/", tc.mutate)
-			var resp ffuf.Response
+			var resp fuzznexus.Response
 			allocated := allocatedBy(func() {
 				var err error
 				resp, err = runner.Execute(&req)
@@ -238,7 +238,7 @@ func TestExecute_SnapshotIsBoundedForGzipBomb(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	runner, req := runnerWithConfig(t, srv.URL+"/", func(c *ffuf.Config) {
+	runner, req := runnerWithConfig(t, srv.URL+"/", func(c *fuzznexus.Config) {
 		c.OutputDirectory = t.TempDir()
 	})
 	resp, err := runner.Execute(&req)
@@ -259,7 +259,7 @@ func TestExecute_SnapshotKeptForNormalResponse(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	runner, req := runnerWithConfig(t, srv.URL+"/", func(c *ffuf.Config) {
+	runner, req := runnerWithConfig(t, srv.URL+"/", func(c *fuzznexus.Config) {
 		c.OutputDirectory = t.TempDir()
 	})
 	resp, err := runner.Execute(&req)
@@ -280,7 +280,7 @@ func TestExecute_IgnoreBodyAppliesToChunkedResponse(t *testing.T) {
 	srv := chunkedBodyServer(t, 32<<10)
 	defer srv.Close()
 
-	runner, req := runnerWithConfig(t, srv.URL+"/", func(c *ffuf.Config) { c.IgnoreBody = true })
+	runner, req := runnerWithConfig(t, srv.URL+"/", func(c *fuzznexus.Config) { c.IgnoreBody = true })
 	resp, err := runner.Execute(&req)
 	if err != nil {
 		t.Fatalf("execute: %v", err)
@@ -304,7 +304,7 @@ func TestExecute_IgnoreBodyKeepsContentLength(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	runner, req := runnerWithConfig(t, srv.URL+"/", func(c *ffuf.Config) { c.IgnoreBody = true })
+	runner, req := runnerWithConfig(t, srv.URL+"/", func(c *fuzznexus.Config) { c.IgnoreBody = true })
 	resp, err := runner.Execute(&req)
 	if err != nil {
 		t.Fatalf("execute: %v", err)
@@ -322,7 +322,7 @@ func TestExecute_IgnoreBodyKeepsContentLength(t *testing.T) {
 func TestNewSimpleRunner_BoundsResponseHeaders(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	conf := ffuf.NewConfig(ctx, cancel)
+	conf := fuzznexus.NewConfig(ctx, cancel)
 	runner := NewSimpleRunner(&conf, false).(*SimpleRunner)
 
 	transport, ok := runner.client.Transport.(*http.Transport)

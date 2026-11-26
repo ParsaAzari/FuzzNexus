@@ -5,14 +5,14 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/ffuf/ffuf/v2/pkg/ffuf"
+	"github.com/parsaazari/fuzznexus/pkg/fuzznexus"
 )
 
 func destRunner(t *testing.T, targetURL string, allowCaptured bool) *SimpleRunner {
 	t.Helper()
 	ctx, cancel := context.WithCancel(context.Background())
 	t.Cleanup(cancel)
-	conf := ffuf.NewConfig(ctx, cancel)
+	conf := fuzznexus.NewConfig(ctx, cancel)
 	conf.Url = targetURL
 	conf.PreflightAnyHost = allowCaptured
 	return NewSimpleRunner(&conf, false).(*SimpleRunner)

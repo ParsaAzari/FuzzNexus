@@ -5,6 +5,7 @@ import (
 	"bytes"
 	"compress/flate"
 	"compress/gzip"
+	"context"
 	"crypto/tls"
 	"fmt"
 	"io"
@@ -23,19 +24,25 @@ import (
 	"sync"
 	"time"
 
-	"github.com/ffuf/ffuf/v2/pkg/ffuf"
+	"github.com/parsaazari/fuzznexus/pkg/engine"
+	"github.com/parsaazari/fuzznexus/pkg/fuzznexus"
 
 	"github.com/andybalholm/brotli"
+	utls "github.com/refraction-networking/utls"
+	"golang.org/x/net/http2"
+	xproxy "golang.org/x/net/proxy"
 )
 
 // Download results < 5MB
 const MAX_DOWNLOAD_SIZE = 5242880
 
 type SimpleRunner struct {
-	config *ffuf.Config
-	client *http.Client
-	lanes  *lanePool
-	// autoPins maps a -preflight-var-auto *ffuf.VarExtract to the source its
+	config    *fuzznexus.Config
+	client    *http.Client
+	transport *http.Transport
+	lanes     *lanePool
+	rotator   *fuzznexus.ProfileRotator
+	// autoPins maps a -preflight-var-auto *fuzznexus.VarExtract to the source its
 	// bare key first resolved to (see extractByName).
 	autoPins sync.Map
 }
@@ -77,7 +84,7 @@ func (p *lanePool) put(l *preflightLane) {
 	p.mu.Unlock()
 }
 
-func NewSimpleRunner(conf *ffuf.Config, replay bool) ffuf.RunnerProvider {
+func NewSimpleRunner(conf *fuzznexus.Config, replay bool) fuzznexus.RunnerProvider {
 	var simplerunner SimpleRunner
 	proxyURL := http.ProxyFromEnvironment
 	customProxy := ""
@@ -95,40 +102,143 @@ func NewSimpleRunner(conf *ffuf.Config, replay bool) ffuf.RunnerProvider {
 	}
 	cert := []tls.Certificate{}
 
+	var uCerts []utls.Certificate
 	if conf.ClientCert != "" && conf.ClientKey != "" {
-		tmp, _ := tls.LoadX509KeyPair(conf.ClientCert, conf.ClientKey)
-		cert = []tls.Certificate{tmp}
+		tmp, err := tls.LoadX509KeyPair(conf.ClientCert, conf.ClientKey)
+		if err == nil {
+			cert = []tls.Certificate{tmp}
+		}
+		if uTmp, uErr := utls.LoadX509KeyPair(conf.ClientCert, conf.ClientKey); uErr == nil {
+			uCerts = []utls.Certificate{uTmp}
+		}
 	}
 
 	simplerunner.config = conf
 	simplerunner.lanes = &lanePool{}
+	simplerunner.rotator = fuzznexus.NewProfileRotator("adaptive", conf.BrowserProfile)
+
+	transport := &http.Transport{
+		ForceAttemptHTTP2: conf.Http2,
+		Proxy:             proxyURL,
+		// Response headers are not covered by MAX_DOWNLOAD_SIZE, and Go's default
+		// ceiling is 10 MB. A hostile target could spend that on every response,
+		// and the headers are retained per response and copied into resp.Raw, the
+		// scraper's source string and the audit log. 1 MB is far above anything a
+		// real server sends (nginx and Apache cap a header line at 8 KB).
+		MaxResponseHeaderBytes: 1 << 20,
+		MaxIdleConns:           1000,
+		MaxIdleConnsPerHost:    500,
+		MaxConnsPerHost:        500,
+		DialContext: (&net.Dialer{
+			Timeout: time.Duration(time.Duration(conf.Timeout) * time.Second),
+		}).DialContext,
+		TLSHandshakeTimeout: time.Duration(time.Duration(conf.Timeout) * time.Second),
+		TLSClientConfig: &tls.Config{
+			InsecureSkipVerify: true,
+			MinVersion:         tls.VersionTLS10,
+			Renegotiation:      tls.RenegotiateOnceAsClient,
+			ServerName:         conf.SNI,
+			Certificates:       cert,
+		},
+	}
+
+	// uTLS integration: If a TLSProfile is configured (e.g. "chrome", "firefox"),
+	// use a dual HTTP/2 + HTTP/1.1 RoundTripper backed by uTLS UClient so browser
+	// ALPN (h2) negotiates HTTP/2 cleanly without breaking net/http's HTTP/1.x parser.
+	var activeRoundTripper http.RoundTripper = transport
+	if conf.TLSProfile != "" && conf.TLSProfile != "default" {
+		var helloID utls.ClientHelloID
+		switch strings.ToLower(conf.TLSProfile) {
+		case "chrome", "chrome120", "chrome-120":
+			helloID = utls.HelloChrome_120
+		case "firefox", "firefox120", "firefox121", "firefox-120":
+			helloID = utls.HelloFirefox_120
+		default:
+			helloID = utls.HelloGolang
+		}
+
+		dialer := &net.Dialer{
+			Timeout: time.Duration(time.Duration(conf.Timeout) * time.Second),
+		}
+		errNotH2 := fmt.Errorf("server did not negotiate h2")
+
+		dialUTLS := func(ctx context.Context, network, addr string, forceH1 bool) (*utls.UConn, error) {
+			var rawConn net.Conn
+			var err error
+
+			var activeProxy *url.URL
+			if proxyURL != nil {
+				activeProxy, _ = proxyURL(&http.Request{URL: &url.URL{Scheme: "https", Host: addr}})
+			}
+			if activeProxy != nil {
+				rawConn, err = dialThroughProxy(ctx, dialer, activeProxy, network, addr)
+			} else {
+				rawConn, err = dialer.DialContext(ctx, network, addr)
+			}
+			if err != nil {
+				return nil, err
+			}
+			host, _, err := net.SplitHostPort(addr)
+			if err != nil {
+				host = addr
+			}
+			if conf.SNI != "" {
+				host = conf.SNI
+			}
+			uConn := utls.UClient(rawConn, &utls.Config{
+				ServerName:         host,
+				InsecureSkipVerify: true,
+				Certificates:       uCerts,
+			}, helloID)
+			if forceH1 {
+				if err := uConn.BuildHandshakeState(); err == nil {
+					for _, ext := range uConn.Extensions {
+						if alpn, ok := ext.(*utls.ALPNExtension); ok {
+							alpn.AlpnProtocols = []string{"http/1.1"}
+						}
+					}
+				}
+			}
+			if err := uConn.HandshakeContext(ctx); err != nil {
+				_ = rawConn.Close()
+				return nil, err
+			}
+			return uConn, nil
+		}
+
+		transport.DialTLSContext = func(ctx context.Context, network, addr string) (net.Conn, error) {
+			return dialUTLS(ctx, network, addr, true)
+		}
+
+		h2Transport := &http2.Transport{
+			AllowHTTP: false,
+			DialTLSContext: func(ctx context.Context, network, addr string, _ *tls.Config) (net.Conn, error) {
+				uConn, err := dialUTLS(ctx, network, addr, false)
+				if err != nil {
+					return nil, err
+				}
+				if uConn.ConnectionState().NegotiatedProtocol != "h2" {
+					_ = uConn.Close()
+					return nil, errNotH2
+				}
+				return uConn, nil
+			},
+		}
+
+		activeRoundTripper = &utlsRoundTripper{
+			h1:        transport,
+			h2:        h2Transport,
+			errNotH2:  errNotH2,
+			h1OnlyMap: &sync.Map{},
+		}
+	}
+
+	simplerunner.transport = transport
 	simplerunner.client = &http.Client{
 		CheckRedirect: func(req *http.Request, via []*http.Request) error { return http.ErrUseLastResponse },
 		Timeout:       time.Duration(time.Duration(conf.Timeout) * time.Second),
-		Transport: &http.Transport{
-			ForceAttemptHTTP2: conf.Http2,
-			Proxy:             proxyURL,
-			// Response headers are not covered by MAX_DOWNLOAD_SIZE, and Go's default
-			// ceiling is 10 MB. A hostile target could spend that on every response,
-			// and the headers are retained per response and copied into resp.Raw, the
-			// scraper's source string and the audit log. 1 MB is far above anything a
-			// real server sends (nginx and Apache cap a header line at 8 KB).
-			MaxResponseHeaderBytes: 1 << 20,
-			MaxIdleConns:           1000,
-			MaxIdleConnsPerHost:    500,
-			MaxConnsPerHost:        500,
-			DialContext: (&net.Dialer{
-				Timeout: time.Duration(time.Duration(conf.Timeout) * time.Second),
-			}).DialContext,
-			TLSHandshakeTimeout: time.Duration(time.Duration(conf.Timeout) * time.Second),
-			TLSClientConfig: &tls.Config{
-				InsecureSkipVerify: true,
-				MinVersion:         tls.VersionTLS10,
-				Renegotiation:      tls.RenegotiateOnceAsClient,
-				ServerName:         conf.SNI,
-				Certificates:       cert,
-			},
-		}}
+		Transport:     activeRoundTripper,
+	}
 
 	if conf.FollowRedirects {
 		simplerunner.client.CheckRedirect = nil
@@ -136,8 +246,92 @@ func NewSimpleRunner(conf *ffuf.Config, replay bool) ffuf.RunnerProvider {
 	return &simplerunner
 }
 
-func (r *SimpleRunner) Prepare(input map[string][]byte, basereq *ffuf.Request) (ffuf.Request, error) {
-	req := ffuf.CopyRequest(basereq)
+type utlsRoundTripper struct {
+	h1        *http.Transport
+	h2        *http2.Transport
+	errNotH2  error
+	h1OnlyMap *sync.Map
+}
+
+func (u *utlsRoundTripper) RoundTrip(req *http.Request) (*http.Response, error) {
+	if req.URL.Scheme != "https" {
+		return u.h1.RoundTrip(req)
+	}
+	host := req.URL.Host
+	if _, forceH1 := u.h1OnlyMap.Load(host); forceH1 {
+		return u.h1.RoundTrip(req)
+	}
+	resp, err := u.h2.RoundTrip(req)
+	if err != nil && strings.Contains(err.Error(), u.errNotH2.Error()) {
+		u.h1OnlyMap.Store(host, true)
+		return u.h1.RoundTrip(req)
+	}
+	return resp, err
+}
+
+func (u *utlsRoundTripper) CloseIdleConnections() {
+	u.h1.CloseIdleConnections()
+	u.h2.CloseIdleConnections()
+}
+
+func dialThroughProxy(ctx context.Context, dialer *net.Dialer, proxyU *url.URL, network, addr string) (net.Conn, error) {
+	scheme := strings.ToLower(proxyU.Scheme)
+	if scheme == "socks5" || scheme == "socks5h" {
+		var auth *xproxy.Auth
+		if proxyU.User != nil {
+			pwd, _ := proxyU.User.Password()
+			auth = &xproxy.Auth{User: proxyU.User.Username(), Password: pwd}
+		}
+		sd, err := xproxy.SOCKS5("tcp", proxyU.Host, auth, dialer)
+		if err != nil {
+			return nil, err
+		}
+		if ctxDialer, ok := sd.(xproxy.ContextDialer); ok {
+			return ctxDialer.DialContext(ctx, network, addr)
+		}
+		return sd.Dial(network, addr)
+	}
+
+	// HTTP/HTTPS CONNECT tunnel for Burp, Caido, and corporate proxies
+	conn, err := dialer.DialContext(ctx, "tcp", proxyU.Host)
+	if err != nil {
+		return nil, err
+	}
+	if deadline, ok := ctx.Deadline(); ok {
+		_ = conn.SetDeadline(deadline)
+	}
+	connectReq := fmt.Sprintf("CONNECT %s HTTP/1.1\r\nHost: %s\r\n\r\n", addr, addr)
+	if _, err := io.WriteString(conn, connectReq); err != nil {
+		_ = conn.Close()
+		return nil, err
+	}
+	br := bufio.NewReader(conn)
+	resp, err := http.ReadResponse(br, &http.Request{Method: http.MethodConnect})
+	if err != nil {
+		_ = conn.Close()
+		return nil, err
+	}
+	_ = resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		_ = conn.Close()
+		return nil, fmt.Errorf("proxy CONNECT %s returned status %s", addr, resp.Status)
+	}
+	_ = conn.SetDeadline(time.Time{})
+	return conn, nil
+}
+
+// CloseIdleConnections releases idle keep-alive sockets held by the transport once a job completes.
+func (r *SimpleRunner) CloseIdleConnections() {
+	if r.client != nil {
+		r.client.CloseIdleConnections()
+	}
+	if r.transport != nil {
+		r.transport.CloseIdleConnections()
+	}
+}
+
+func (r *SimpleRunner) Prepare(input map[string][]byte, basereq *fuzznexus.Request) (fuzznexus.Request, error) {
+	req := fuzznexus.CopyRequest(basereq)
 
 	for keyword, inputitem := range input {
 		req.Method = strings.ReplaceAll(req.Method, keyword, string(inputitem))
@@ -155,7 +349,7 @@ func (r *SimpleRunner) Prepare(input map[string][]byte, basereq *ffuf.Request) (
 	return req, nil
 }
 
-func (r *SimpleRunner) Execute(req *ffuf.Request) (resp ffuf.Response, err error) {
+func (r *SimpleRunner) Execute(req *fuzznexus.Request) (resp fuzznexus.Response, err error) {
 	// Pin the target host: a value captured from an (untrusted) preflight response
 	// must not change which host this authenticated request is sent to.
 	targetHost := hostOf(req.Url)
@@ -172,11 +366,11 @@ func (r *SimpleRunner) Execute(req *ffuf.Request) (resp ffuf.Response, err error
 		}
 	}()
 	if pferr != nil {
-		return ffuf.Response{}, pferr
+		return fuzznexus.Response{}, pferr
 	}
 	if len(appliedVars) > 0 {
 		if h := hostOf(req.Url); h != targetHost {
-			return ffuf.Response{}, fmt.Errorf("preflight variable changed the request host from %q to %q; refusing to send (a captured value must not alter the target host)", targetHost, h)
+			return fuzznexus.Response{}, fmt.Errorf("preflight variable changed the request host from %q to %q; refusing to send (a captured value must not alter the target host)", targetHost, h)
 		}
 	}
 
@@ -184,27 +378,40 @@ func (r *SimpleRunner) Execute(req *ffuf.Request) (resp ffuf.Response, err error
 	var rawreq []byte
 	data := bytes.NewReader(req.Data)
 
+	var traceMu sync.Mutex
 	var start time.Time
 	var firstByteTime time.Duration
 
 	trace := &httptrace.ClientTrace{
 		WroteRequest: func(wri httptrace.WroteRequestInfo) {
+			traceMu.Lock()
 			start = time.Now() // begin the timer after the request is fully written
+			traceMu.Unlock()
 		},
 		GotFirstResponseByte: func() {
-			firstByteTime = time.Since(start) // record when the first byte of the response was received
+			traceMu.Lock()
+			if !start.IsZero() {
+				firstByteTime = time.Since(start) // record when the first byte of the response was received
+			}
+			traceMu.Unlock()
 		},
 	}
 
 	httpreq, err = http.NewRequestWithContext(r.config.Context, req.Method, req.Url, data)
 
 	if err != nil {
-		return ffuf.Response{}, err
+		return fuzznexus.Response{}, err
 	}
 
-	// set default User-Agent header if not present
-	if _, ok := req.Headers["User-Agent"]; !ok {
-		req.Headers["User-Agent"] = fmt.Sprintf("%s v%s", "Fuzz Faster U Fool", ffuf.Version())
+	// Apply realistic browser persona headers (Accept, Accept-Language, Sec-*, User-Agent)
+	if req.Headers == nil {
+		req.Headers = make(map[string]string)
+	}
+	if r.rotator != nil {
+		activeProfile := r.rotator.Current()
+		req.Headers = activeProfile.ApplyToHeadersMap(req.Headers)
+	} else if _, ok := req.Headers["User-Agent"]; !ok {
+		req.Headers["User-Agent"] = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36"
 	}
 
 	// Handle Go http.Request special cases
@@ -230,13 +437,29 @@ func (r *SimpleRunner) Execute(req *ffuf.Request) (resp ffuf.Response, err error
 
 	httpresp, err := r.client.Do(httpreq)
 	if err != nil {
-		return ffuf.Response{}, err
+		if r.config.CloseConnOnThrottle && r.transport != nil {
+			r.transport.CloseIdleConnections()
+		}
+		return fuzznexus.Response{}, err
 	}
 
 	req.Timestamp = start
 
-	resp = ffuf.NewResponse(httpresp, req)
+	resp = fuzznexus.NewResponse(httpresp, req)
 	defer httpresp.Body.Close()
+
+	if r.config.CloseConnOnThrottle && r.transport != nil {
+		if httpresp.StatusCode == 429 || httpresp.StatusCode == 503 {
+			r.transport.CloseIdleConnections()
+		}
+	}
+
+	// Adaptive browser persona rotation on 403 (blocked) or 429 (rate limited)
+	if r.config.RotateBrowserProfile && r.rotator != nil {
+		if httpresp.StatusCode == 403 || httpresp.StatusCode == 429 {
+			r.rotator.Rotate()
+		}
+	}
 
 	// Record the server-declared length first, so it is set before any early return
 	// below and the size filters still observe it.
@@ -308,6 +531,14 @@ func (r *SimpleRunner) Execute(req *ffuf.Request) (resp ffuf.Response, err error
 		}
 		resp.ContentLength = int64(len(respbody))
 		resp.Data = respbody
+
+		if r.config.DetectSoftBlock {
+			sbd := engine.NewSoftBlockDetector(true)
+			if isSoft, _ := sbd.Check(int(resp.StatusCode), resp.Headers, resp.Data); isSoft {
+				resp.StatusCode = 403
+				resp.Cancelled = true
+			}
+		}
 	}
 
 	// Count words and lines without materializing a []string. For a single-byte
@@ -319,8 +550,10 @@ func (r *SimpleRunner) Execute(req *ffuf.Request) (resp ffuf.Response, err error
 	linesSize := bytes.Count(resp.Data, []byte("\n")) + 1
 	resp.ContentWords = int64(wordsSize)
 	resp.ContentLines = int64(linesSize)
+	traceMu.Lock()
 	resp.Duration = firstByteTime
 	resp.Timestamp = start.Add(firstByteTime)
+	traceMu.Unlock()
 
 	return resp, nil
 }
@@ -441,7 +674,7 @@ func (r *SimpleRunner) parsePreflightRequest(filename string, vars map[string]st
 		httpreq.Host = host
 	}
 	if _, ok := headers["User-Agent"]; !ok {
-		headers["User-Agent"] = fmt.Sprintf("%s v%s", "Fuzz Faster U Fool", ffuf.Version())
+		headers["User-Agent"] = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
 	}
 	for k, v := range headers {
 		httpreq.Header.Set(k, v)
@@ -453,7 +686,7 @@ func (r *SimpleRunner) parsePreflightRequest(filename string, vars map[string]st
 // variables. inheritVars seeds the map (e.g. with vars from an earlier step). The
 // result is returned; no shared state is touched. On error it honours
 // -preflight-error: "ignore" returns the vars gathered so far, "abort" errors.
-func (r *SimpleRunner) runPreflightChain(chain []ffuf.PreflightConfig, inheritVars map[string]string) (map[string]string, error) {
+func (r *SimpleRunner) runPreflightChain(chain []fuzznexus.PreflightConfig, inheritVars map[string]string) (map[string]string, error) {
 	vars := make(map[string]string, len(inheritVars))
 	for k, v := range inheritVars {
 		vars[k] = v
@@ -623,7 +856,7 @@ func (r *SimpleRunner) hostHasKeyword(host string) (string, bool) {
 
 // applyVars substitutes extracted variable keywords into a single request's URL,
 // headers and body. It mutates only the request passed in.
-func (r *SimpleRunner) applyVars(req *ffuf.Request, vars map[string]string) {
+func (r *SimpleRunner) applyVars(req *fuzznexus.Request, vars map[string]string) {
 	if len(vars) == 0 {
 		return
 	}
@@ -639,7 +872,7 @@ func (r *SimpleRunner) applyVars(req *ffuf.Request, vars map[string]string) {
 // (fresh per request, or once per lane and amortized in per-thread mode) and
 // applies them. It returns the applied vars so postflight can chain off them, and
 // a cleanup func the caller must defer (it returns a borrowed lane, if any).
-func (r *SimpleRunner) runPreflights(req *ffuf.Request) (applied map[string]string, cleanup func(), err error) {
+func (r *SimpleRunner) runPreflights(req *fuzznexus.Request) (applied map[string]string, cleanup func(), err error) {
 	cleanup = func() {}
 	if len(r.config.Preflights) == 0 {
 		return nil, cleanup, nil
@@ -682,7 +915,7 @@ func (r *SimpleRunner) runPostflights(seedVars map[string]string) {
 	}
 }
 
-func (r *SimpleRunner) Dump(req *ffuf.Request) ([]byte, error) {
+func (r *SimpleRunner) Dump(req *fuzznexus.Request) ([]byte, error) {
 	var httpreq *http.Request
 	var err error
 	data := bytes.NewReader(req.Data)
@@ -691,9 +924,15 @@ func (r *SimpleRunner) Dump(req *ffuf.Request) ([]byte, error) {
 		return []byte{}, err
 	}
 
-	// set default User-Agent header if not present
-	if _, ok := req.Headers["User-Agent"]; !ok {
-		req.Headers["User-Agent"] = fmt.Sprintf("%s v%s", "Fuzz Faster U Fool", ffuf.Version())
+	// Apply realistic browser persona headers (Accept, Accept-Language, Sec-*, User-Agent)
+	if req.Headers == nil {
+		req.Headers = make(map[string]string)
+	}
+	if r.rotator != nil {
+		activeProfile := r.rotator.Current()
+		req.Headers = activeProfile.ApplyToHeadersMap(req.Headers)
+	} else if _, ok := req.Headers["User-Agent"]; !ok {
+		req.Headers["User-Agent"] = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36"
 	}
 
 	// Handle Go http.Request special cases

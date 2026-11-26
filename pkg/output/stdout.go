@@ -12,7 +12,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/ffuf/ffuf/v2/pkg/ffuf"
+	"github.com/parsaazari/fuzznexus/pkg/fuzznexus"
 )
 
 const (
@@ -28,21 +28,21 @@ const (
 )
 
 type Stdoutput struct {
-	config           *ffuf.Config
+	config           *fuzznexus.Config
 	fuzzkeywords     []string
 	resultMutex      sync.Mutex // guards Results, CurrentResults and paused; Result is called from worker goroutines
-	Results          []ffuf.Result
-	CurrentResults   []ffuf.Result
+	Results          []fuzznexus.Result
+	CurrentResults   []fuzznexus.Result
 	stdoutIsTerminal bool
 	stderrIsTerminal bool
 	paused           bool // when set, Result records matches but does not print them
 }
 
-func NewStdoutput(conf *ffuf.Config) *Stdoutput {
+func NewStdoutput(conf *fuzznexus.Config) *Stdoutput {
 	var outp Stdoutput
 	outp.config = conf
-	outp.Results = make([]ffuf.Result, 0)
-	outp.CurrentResults = make([]ffuf.Result, 0)
+	outp.Results = make([]fuzznexus.Result, 0)
+	outp.CurrentResults = make([]fuzznexus.Result, 0)
 	outp.fuzzkeywords = make([]string, 0)
 	outp.stdoutIsTerminal = isTerminal(os.Stdout)
 	outp.stderrIsTerminal = isTerminal(os.Stderr)
@@ -97,7 +97,7 @@ func (s *Stdoutput) ansiClear() string {
 }
 
 func (s *Stdoutput) Banner() {
-	version := ffuf.FormattedVersion()
+	version := fuzznexus.FormattedVersion()
 	if s.config.Colors {
 		// Only colorize the heart when colors are enabled; otherwise a redirected
 		// or non-terminal stderr gets raw ANSI escape bytes in the banner.
@@ -198,7 +198,7 @@ func (s *Stdoutput) Banner() {
 // Reset resets the result slice
 func (s *Stdoutput) Reset() {
 	s.resultMutex.Lock()
-	s.CurrentResults = make([]ffuf.Result, 0)
+	s.CurrentResults = make([]fuzznexus.Result, 0)
 	s.resultMutex.Unlock()
 }
 
@@ -206,21 +206,21 @@ func (s *Stdoutput) Reset() {
 func (s *Stdoutput) Cycle() {
 	s.resultMutex.Lock()
 	s.Results = append(s.Results, s.CurrentResults...)
-	s.CurrentResults = make([]ffuf.Result, 0)
+	s.CurrentResults = make([]fuzznexus.Result, 0)
 	s.resultMutex.Unlock()
 }
 
 // GetResults returns the result slice
-func (s *Stdoutput) GetCurrentResults() []ffuf.Result {
+func (s *Stdoutput) GetCurrentResults() []fuzznexus.Result {
 	s.resultMutex.Lock()
 	defer s.resultMutex.Unlock()
-	out := make([]ffuf.Result, len(s.CurrentResults))
+	out := make([]fuzznexus.Result, len(s.CurrentResults))
 	copy(out, s.CurrentResults)
 	return out
 }
 
 // SetResults sets the result slice
-func (s *Stdoutput) SetCurrentResults(results []ffuf.Result) {
+func (s *Stdoutput) SetCurrentResults(results []fuzznexus.Result) {
 	s.resultMutex.Lock()
 	s.CurrentResults = results
 	s.resultMutex.Unlock()
@@ -230,10 +230,10 @@ func (s *Stdoutput) SetCurrentResults(results []ffuf.Result) {
 // read-filter-write runs under resultMutex, so a concurrent Result() append is
 // not lost through a stale snapshot the way a caller-side GetCurrentResults /
 // SetCurrentResults pair would drop it.
-func (s *Stdoutput) FilterCurrentResults(keep func(ffuf.Result) bool) {
+func (s *Stdoutput) FilterCurrentResults(keep func(fuzznexus.Result) bool) {
 	s.resultMutex.Lock()
 	defer s.resultMutex.Unlock()
-	filtered := make([]ffuf.Result, 0, len(s.CurrentResults))
+	filtered := make([]fuzznexus.Result, 0, len(s.CurrentResults))
 	for _, r := range s.CurrentResults {
 		if keep(r) {
 			filtered = append(filtered, r)
@@ -242,7 +242,7 @@ func (s *Stdoutput) FilterCurrentResults(keep func(ffuf.Result) bool) {
 	s.CurrentResults = filtered
 }
 
-func (s *Stdoutput) Progress(status ffuf.Progress) {
+func (s *Stdoutput) Progress(status fuzznexus.Progress) {
 	if s.config.Quiet {
 		// No progress for quiet mode
 		return
@@ -306,7 +306,7 @@ func (s *Stdoutput) Raw(output string) {
 	fmt.Fprintf(os.Stderr, "%s%s", s.stderrClear(), output)
 }
 
-func (s *Stdoutput) writeToAll(filename string, config *ffuf.Config, res []ffuf.Result) error {
+func (s *Stdoutput) writeToAll(filename string, config *fuzznexus.Config, res []fuzznexus.Result) error {
 	var err error
 	var BaseFilename string = s.config.OutputFile
 
@@ -359,7 +359,7 @@ func (s *Stdoutput) SaveFile(filename, format string) error {
 	// Snapshot the results under the lock so a concurrent Result() cannot race the
 	// file writers, then write outside the lock.
 	s.resultMutex.Lock()
-	all := make([]ffuf.Result, 0, len(s.Results)+len(s.CurrentResults))
+	all := make([]fuzznexus.Result, 0, len(s.Results)+len(s.CurrentResults))
 	all = append(all, s.Results...)
 	all = append(all, s.CurrentResults...)
 	s.resultMutex.Unlock()
@@ -402,7 +402,7 @@ func (s *Stdoutput) Finalize() error {
 	return nil
 }
 
-func (s *Stdoutput) Result(resp ffuf.Response) {
+func (s *Stdoutput) Result(resp fuzznexus.Response) {
 	// Do we want to write request and response to a file
 	if len(s.config.OutputDirectory) > 0 {
 		resp.ResultFile = s.writeResultToFile(resp)
@@ -412,7 +412,7 @@ func (s *Stdoutput) Result(resp ffuf.Response) {
 	for k, v := range resp.Request.Input {
 		inputs[k] = v
 	}
-	sResult := ffuf.Result{
+	sResult := fuzznexus.Result{
 		Input:            inputs,
 		Position:         resp.Request.Position,
 		StatusCode:       resp.StatusCode,
@@ -478,7 +478,7 @@ func (s *Stdoutput) PendingResults() int {
 	return n
 }
 
-func (s *Stdoutput) writeResultToFile(resp ffuf.Response) string {
+func (s *Stdoutput) writeResultToFile(resp fuzznexus.Response) string {
 	var fileContent, fileName, filePath string
 	// Create directory if needed
 	if s.config.OutputDirectory != "" {
@@ -503,7 +503,7 @@ func (s *Stdoutput) writeResultToFile(resp ffuf.Response) string {
 	return fileName
 }
 
-func (s *Stdoutput) PrintResult(res ffuf.Result) {
+func (s *Stdoutput) PrintResult(res fuzznexus.Result) {
 	switch {
 	case s.config.Json:
 		s.resultJson(res)
@@ -517,11 +517,11 @@ func (s *Stdoutput) PrintResult(res ffuf.Result) {
 	}
 }
 
-func (s *Stdoutput) prepareInputsOneLine(res ffuf.Result) string {
+func (s *Stdoutput) prepareInputsOneLine(res fuzznexus.Result) string {
 	inputs := ""
 	if len(s.fuzzkeywords) > 1 {
 		for _, k := range s.fuzzkeywords {
-			if ffuf.StrInSlice(k, s.config.CommandKeywords) {
+			if fuzznexus.StrInSlice(k, s.config.CommandKeywords) {
 				// If we're using external command for input, display the position instead of input
 				inputs = fmt.Sprintf("%s%s : %s ", inputs, k, strconv.Itoa(res.Position))
 			} else {
@@ -530,7 +530,7 @@ func (s *Stdoutput) prepareInputsOneLine(res ffuf.Result) string {
 		}
 	} else {
 		for _, k := range s.fuzzkeywords {
-			if ffuf.StrInSlice(k, s.config.CommandKeywords) {
+			if fuzznexus.StrInSlice(k, s.config.CommandKeywords) {
 				// If we're using external command for input, display the position instead of input
 				inputs = strconv.Itoa(res.Position)
 			} else {
@@ -541,11 +541,11 @@ func (s *Stdoutput) prepareInputsOneLine(res ffuf.Result) string {
 	return inputs
 }
 
-func (s *Stdoutput) resultQuiet(res ffuf.Result) {
+func (s *Stdoutput) resultQuiet(res fuzznexus.Result) {
 	fmt.Println(s.prepareInputsOneLine(res))
 }
 
-func (s *Stdoutput) resultMultiline(res ffuf.Result) {
+func (s *Stdoutput) resultMultiline(res fuzznexus.Result) {
 	var res_hdr, res_str string
 	res_str = "%s%s    * %s: %s\n"
 	res_hdr = fmt.Sprintf("%s%s[Status: %d, Size: %d, Words: %d, Lines: %d, Duration: %dms]%s", s.stdoutClear(), s.colorize(res.StatusCode), res.StatusCode, res.ContentLength, res.ContentWords, res.ContentLines, res.Duration.Milliseconds(), s.ansiClear())
@@ -561,7 +561,7 @@ func (s *Stdoutput) resultMultiline(res ffuf.Result) {
 		reslines = fmt.Sprintf("%s%s| RES | %s\n", reslines, s.stdoutClear(), res.ResultFile)
 	}
 	for _, k := range s.fuzzkeywords {
-		if ffuf.StrInSlice(k, s.config.CommandKeywords) {
+		if fuzznexus.StrInSlice(k, s.config.CommandKeywords) {
 			// If we're using external command for input, display the position instead of input
 			reslines = fmt.Sprintf(res_str, reslines, s.stdoutClear(), k, strconv.Itoa(res.Position))
 		} else {
@@ -580,12 +580,12 @@ func (s *Stdoutput) resultMultiline(res ffuf.Result) {
 	fmt.Printf("%s\n%s\n", res_hdr, reslines)
 }
 
-func (s *Stdoutput) resultNormal(res ffuf.Result) {
+func (s *Stdoutput) resultNormal(res fuzznexus.Result) {
 	resnormal := fmt.Sprintf("%s%s%-23s [Status: %d, Size: %d, Words: %d, Lines: %d, Duration: %dms]%s", s.stdoutClear(), s.colorize(res.StatusCode), s.prepareInputsOneLine(res), res.StatusCode, res.ContentLength, res.ContentWords, res.ContentLines, res.Duration.Milliseconds(), s.ansiClear())
 	fmt.Println(resnormal)
 }
 
-func (s *Stdoutput) resultJson(res ffuf.Result) {
+func (s *Stdoutput) resultJson(res fuzznexus.Result) {
 	resBytes, err := json.Marshal(res)
 	if err != nil {
 		s.Error(err.Error())

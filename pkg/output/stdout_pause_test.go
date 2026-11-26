@@ -6,13 +6,13 @@ import (
 	"sync"
 	"testing"
 
-	"github.com/ffuf/ffuf/v2/pkg/ffuf"
+	"github.com/parsaazari/fuzznexus/pkg/fuzznexus"
 )
 
-func resp(i int) ffuf.Response {
-	return ffuf.Response{
+func resp(i int) fuzznexus.Response {
+	return fuzznexus.Response{
 		StatusCode: 200,
-		Request: &ffuf.Request{
+		Request: &fuzznexus.Request{
 			Input: map[string][]byte{"FUZZ": []byte(fmt.Sprintf("w%d", i))},
 			Url:   fmt.Sprintf("http://example/%d", i),
 		},
@@ -25,7 +25,7 @@ func resp(i int) ffuf.Response {
 // console banner off screen. The recorded results must still be retrievable
 // (show / savejson / -o output stay complete).
 func TestResultSuppressedWhilePaused(t *testing.T) {
-	s := NewStdoutput(&ffuf.Config{})
+	s := NewStdoutput(&fuzznexus.Config{})
 	s.stdoutIsTerminal = false
 	s.SetPaused(true)
 
@@ -50,7 +50,7 @@ func TestResultSuppressedWhilePaused(t *testing.T) {
 // TestResultPrintsWhenNotPaused is the negative control: with no pause in
 // effect, Result streams to the terminal and PendingResults stays zero.
 func TestResultPrintsWhenNotPaused(t *testing.T) {
-	s := NewStdoutput(&ffuf.Config{})
+	s := NewStdoutput(&fuzznexus.Config{})
 	s.stdoutIsTerminal = false
 
 	out := captureStdout(t, func() {
@@ -70,7 +70,7 @@ func TestResultPrintsWhenNotPaused(t *testing.T) {
 // drop out of the pending count, so the "N new matches" report can never
 // contradict what "show" displays.
 func TestPendingReconcilesWithFilter(t *testing.T) {
-	s := NewStdoutput(&ffuf.Config{})
+	s := NewStdoutput(&fuzznexus.Config{})
 	s.stdoutIsTerminal = false
 
 	s.SetPaused(true)
@@ -82,7 +82,7 @@ func TestPendingReconcilesWithFilter(t *testing.T) {
 
 	// Simulate an interactive filter change that keeps only w1, as
 	// refreshResults does via FilterCurrentResults.
-	s.FilterCurrentResults(func(r ffuf.Result) bool {
+	s.FilterCurrentResults(func(r fuzznexus.Result) bool {
 		return string(r.Input["FUZZ"]) == "w1"
 	})
 
@@ -98,7 +98,7 @@ func TestPendingReconcilesWithFilter(t *testing.T) {
 // leaving a pause a subsequent pause with no new matches reports zero, rather
 // than re-counting results the user was already told about.
 func TestUnpauseMarksHeldSeen(t *testing.T) {
-	s := NewStdoutput(&ffuf.Config{})
+	s := NewStdoutput(&fuzznexus.Config{})
 	s.stdoutIsTerminal = false
 
 	s.SetPaused(true)
@@ -123,7 +123,7 @@ func TestUnpauseMarksHeldSeen(t *testing.T) {
 // (as the engine's worker pool does) and asserts nothing is lost and nothing is
 // printed. Run with -race to catch a data race on paused/Printed directly.
 func TestConcurrentResultWhilePaused(t *testing.T) {
-	s := NewStdoutput(&ffuf.Config{})
+	s := NewStdoutput(&fuzznexus.Config{})
 	s.stdoutIsTerminal = false
 	s.SetPaused(true)
 

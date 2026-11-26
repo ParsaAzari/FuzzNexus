@@ -1,7 +1,31 @@
+# Binaries & build artifacts
 /ffuf
-.idea
-/dist
+/fuzznexus
+/dist/
+fuzznexus-desktop/build/bin/
+fuzznexus-desktop/frontend/dist/
+fuzznexus-desktop/ffuf-desktop
+fuzznexus-desktop/frontend/package.json.md5
+
+# Dependencies
 node_modules/
-ffuf-desktop/build/bin/
-ffuf-desktop/frontend/node_modules/
-ffuf-desktop/frontend/dist/
+fuzznexus-desktop/frontend/node_modules/
+
+# IDE & OS
+.idea/
+.vscode/
+.DS_Store
+__pycache__/
+*.pyc
+
+# Profiling & logs
+*.prof
+*.log
+coverage.out
+*.test
+
+# Generated test-lab reports
+/testlab/*_results.json
+
+# Audit reports
+/audit-reports/

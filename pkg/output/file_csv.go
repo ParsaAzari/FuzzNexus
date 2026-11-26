@@ -6,12 +6,12 @@ import (
 	"os"
 	"strconv"
 
-	"github.com/ffuf/ffuf/v2/pkg/ffuf"
+	"github.com/parsaazari/fuzznexus/pkg/fuzznexus"
 )
 
-var staticheaders = []string{"url", "redirectlocation", "position", "status_code", "content_length", "content_words", "content_lines", "content_type", "duration", "resultfile", "Ffufhash"}
+var staticheaders = []string{"url", "redirectlocation", "position", "status_code", "content_length", "content_words", "content_lines", "content_type", "duration", "resultfile", "FNHASH"}
 
-func writeCSV(filename string, config *ffuf.Config, res []ffuf.Result, encode bool) error {
+func writeCSV(filename string, config *fuzznexus.Config, res []fuzznexus.Result, encode bool) error {
 	header := make([]string, 0)
 	f, err := os.Create(filename)
 	if err != nil {
@@ -51,11 +51,11 @@ func base64encode(in []byte) string {
 	return base64.StdEncoding.EncodeToString(in)
 }
 
-func toCSV(r ffuf.Result) []string {
+func toCSV(r fuzznexus.Result) []string {
 	res := make([]string, 0)
 	ffufhash := ""
 	for k, v := range r.Input {
-		if k == "FFUFHASH" {
+		if k == "FNHASH" {
 			ffufhash = string(v)
 		} else {
 			res = append(res, string(v))

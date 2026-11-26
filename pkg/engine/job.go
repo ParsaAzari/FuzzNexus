@@ -1,17 +1,20 @@
 package engine
 
 import (
+	"context"
+	"errors"
 	"fmt"
 	"log"
 	"math/rand"
 	"os"
 	"os/signal"
+	"strings"
 	"sync"
 	"sync/atomic"
 	"syscall"
 	"time"
 
-	"github.com/ffuf/ffuf/v2/pkg/ffuf"
+	"github.com/parsaazari/fuzznexus/pkg/fuzznexus"
 )
 
 // Job ties together Config, Runner, Input and Output
@@ -24,22 +27,25 @@ type Job struct {
 	spuriousErrorCounter int64
 	count403             int64
 	count429             int64
+	bytesSent            int64
+	bytesRecv            int64
 
 	// 32-bit atomic flags (0 = false, 1 = true). Access only through the helpers.
 	running    int32
 	runningJob int32
 	skipQueue  int32
 
-	AuditLogger  ffuf.AuditLogger
-	Config       *ffuf.Config
-	Input        ffuf.InputProvider
-	Runner       ffuf.RunnerProvider
-	ReplayRunner ffuf.RunnerProvider
-	Scraper      ffuf.Scraper
-	Output       ffuf.OutputProvider
-	Jobhash      string
-	Total        int
-	Rate         *RateThrottle
+	AuditLogger    fuzznexus.AuditLogger
+	Config         *fuzznexus.Config
+	Input          fuzznexus.InputProvider
+	Runner         fuzznexus.RunnerProvider
+	ReplayRunner   fuzznexus.RunnerProvider
+	Scraper        fuzznexus.Scraper
+	Output         fuzznexus.OutputProvider
+	Jobhash        string
+	Total          int
+	Rate           *RateThrottle
+	CircuitBreaker *CircuitBreaker
 
 	queue     *jobQueue
 	recursion *recursionManager
@@ -60,7 +66,7 @@ type Job struct {
 type QueueJob struct {
 	Url   string
 	depth int
-	req   ffuf.Request
+	req   fuzznexus.Request
 }
 
 // jobContext carries the per-queue-job values a worker needs, passed BY VALUE so
@@ -69,15 +75,21 @@ type QueueJob struct {
 // makes the recursion-depth and base-request reads correct by construction rather
 // than by drain timing.
 type jobContext struct {
-	basereq ffuf.Request
+	basereq fuzznexus.Request
 	depth   int
 }
 
-func NewJob(conf *ffuf.Config) *Job {
+func NewJob(conf *fuzznexus.Config) *Job {
 	var j Job
 	j.Config = conf
 	j.queue = newJobQueue()
 	j.Rate = NewRateThrottle(conf)
+	j.CircuitBreaker = NewCircuitBreaker(DefaultCircuitBreakerConfig())
+	j.CircuitBreaker.SetOnStateChange(func(oldState, newState CircuitState, reason string) {
+		if j.Output != nil {
+			j.Output.Warning(fmt.Sprintf("[CircuitBreaker] %v -> %v: %s", oldState, newState, reason))
+		}
+	})
 	// Let the runner meter preflight/postflight requests against the same rate
 	// limiter as the main dispatch loop, so -rate/-p bound total outgoing volume
 	// rather than only the fuzzing requests.
@@ -117,7 +129,8 @@ func (j *Job) setSkipQueue(v bool)  { atomic.StoreInt32(&j.skipQueue, boolToInt3
 func (j *Job) isSkipQueue() bool    { return atomic.LoadInt32(&j.skipQueue) == 1 }
 
 func (j *Job) setError(s string) { j.errMutex.Lock(); j.errorMsg = s; j.errMutex.Unlock() }
-func (j *Job) getError() string  { j.errMutex.Lock(); defer j.errMutex.Unlock(); return j.errorMsg }
+func (j *Job) GetError() string  { j.errMutex.Lock(); defer j.errMutex.Unlock(); return j.errorMsg }
+func (j *Job) getError() string  { return j.GetError() }
 
 func (j *Job) setStartTime(t time.Time) { j.timeMutex.Lock(); j.startTime = t; j.timeMutex.Unlock() }
 func (j *Job) getStartTime() time.Time {
@@ -170,18 +183,18 @@ func (j *Job) Start() {
 	// capture it here.
 	j.recursion = newRecursionManager(j.Config, j.queue, j.Output)
 
-	basereq := ffuf.BaseRequest(j.Config)
+	basereq := fuzznexus.BaseRequest(j.Config)
 
 	if j.Config.InputMode == "sniper" {
 		// process multiple payload locations and create a queue job for each location
-		reqs := ffuf.SniperRequests(&basereq, j.Config.InputProviders[0].Template)
+		reqs := fuzznexus.SniperRequests(&basereq, j.Config.InputProviders[0].Template)
 		for _, r := range reqs {
 			j.queue.push(QueueJob{Url: j.Config.Url, depth: 0, req: r})
 		}
 		j.Total = j.Input.Total() * len(reqs)
 	} else {
 		// Add the default job to job queue
-		j.queue.push(QueueJob{Url: j.Config.Url, depth: 0, req: ffuf.BaseRequest(j.Config)})
+		j.queue.push(QueueJob{Url: j.Config.Url, depth: 0, req: fuzznexus.BaseRequest(j.Config)})
 		j.Total = j.Input.Total()
 	}
 
@@ -233,7 +246,7 @@ func (j *Job) jobsInQueue() bool {
 func (j *Job) prepareQueueJob() jobContext {
 	job, _ := j.queue.advance()
 	// Config.Url is set here on the MAIN goroutine only, so WriteHistoryEntry below
-	// (FFUFHASH) and the queued-job banner serialize the current target. Workers
+	// (FNHASH) and the queued-job banner serialize the current target. Workers
 	// never read it; they use the immutable jobContext returned from here.
 	j.Config.Url = job.Url
 
@@ -241,7 +254,7 @@ func (j *Job) prepareQueueJob() jobContext {
 	kws := j.Input.Keywords()
 	found_kws := make([]string, 0)
 	for _, k := range kws {
-		if ffuf.RequestContainsKeyword(job.req, k) {
+		if fuzznexus.RequestContainsKeyword(job.req, k) {
 			found_kws = append(found_kws, k)
 		}
 	}
@@ -336,6 +349,19 @@ func (j *Job) startExecution(ctx jobContext) {
 	//Limiter blocks after reaching the buffer, ensuring limited concurrency
 	threadlimiter := make(chan bool, j.Config.Threads)
 
+	// Fast-forward input cursor when resuming from a saved checkpoint
+	if j.Config.StartIndex > 0 && j.queue.position() <= 1 {
+		j.inputMutex.Lock()
+		for skipped := 0; skipped < j.Config.StartIndex; skipped++ {
+			if !j.Input.Next() {
+				break
+			}
+			_ = j.Input.Value()
+			j.incCounter()
+		}
+		j.inputMutex.Unlock()
+	}
+
 	for {
 		// Advancing the input cursor is done under inputMutex so an interactive
 		// restart (which calls Input.Reset) cannot race it.
@@ -354,6 +380,15 @@ func (j *Job) startExecution(ctx jobContext) {
 			break
 		}
 		j.pauseCheckpoint()
+		// Handle adaptive WAF backoff if triggered
+		if j.CircuitBreaker != nil {
+			if backoff, delay := j.CircuitBreaker.CheckBackoff(); backoff && delay > 0 {
+				select {
+				case <-j.Config.Context.Done():
+				case <-time.After(delay):
+				}
+			}
+		}
 		// Handle the rate & thread limiting
 		threadlimiter <- true
 		// Ratelimiter handles the rate ticker
@@ -363,8 +398,8 @@ func (j *Job) startExecution(ctx jobContext) {
 		nextInput := j.Input.Value()
 		nextPosition := j.Input.Position()
 		j.inputMutex.Unlock()
-		// Add FFUFHASH and its value
-		nextInput["FFUFHASH"] = j.ffufHash(nextPosition)
+		// Add FNHASH and its value
+		nextInput["FNHASH"] = j.ffufHash(nextPosition)
 
 		wg.Add(1)
 		j.incCounter()
@@ -434,7 +469,7 @@ func (j *Job) runBackgroundTasks(wg *sync.WaitGroup) {
 }
 
 func (j *Job) updateProgress() {
-	prog := ffuf.Progress{
+	prog := fuzznexus.Progress{
 		StartedAt:  j.getStartTimeJob(),
 		ReqCount:   j.getCounter(),
 		ReqTotal:   j.Input.Total(),
@@ -442,13 +477,15 @@ func (j *Job) updateProgress() {
 		QueuePos:   j.queue.position(),
 		QueueTotal: j.queue.total(),
 		ErrorCount: j.getErrorCounter(),
+		BytesSent:  atomic.LoadInt64(&j.bytesSent),
+		BytesRecv:  atomic.LoadInt64(&j.bytesRecv),
 	}
 	j.Output.Progress(prog)
 }
 
 // isMatch delegates the match/filter decision to the MatcherManager seam, adapting
 // the Config fields it needs. The logic itself now lives in filter.MatcherManager.
-func (j *Job) isMatch(resp ffuf.Response) bool {
+func (j *Job) isMatch(resp fuzznexus.Response) bool {
 	return j.Config.MatcherManager.Matches(&resp, j.Config.AutoCalibrationPerHost, j.Config.MatcherMode, j.Config.FilterMode)
 }
 
@@ -462,6 +499,19 @@ func (j *Job) ffufHash(pos int) []byte {
 	return []byte(hashstring)
 }
 
+func isContextCanceled(err error, ctx context.Context) bool {
+	if errors.Is(err, context.Canceled) {
+		return true
+	}
+	if ctx != nil && ctx.Err() != nil {
+		return true
+	}
+	if err != nil && (strings.Contains(err.Error(), "context canceled") || strings.Contains(err.Error(), "operation was canceled")) {
+		return true
+	}
+	return false
+}
+
 func (j *Job) runTask(ctx jobContext, input map[string][]byte, position int, retried bool) {
 	basereq := ctx.basereq
 	req, err := j.Runner.Prepare(input, &basereq)
@@ -469,15 +519,48 @@ func (j *Job) runTask(ctx jobContext, input map[string][]byte, position int, ret
 
 	req.Position = position
 	if err != nil {
+		if isContextCanceled(err, j.Config.Context) {
+			return
+		}
 		j.Output.Error(fmt.Sprintf("Encountered an error while preparing request: %s\n", err))
 		j.incError()
+		if j.CircuitBreaker != nil {
+			j.CircuitBreaker.Record(0, true)
+		}
 		log.Printf("%s", err)
+		if j.Output != nil {
+			kw := ""
+			for _, v := range input {
+				if len(v) > 0 {
+					kw = string(v)
+					break
+				}
+			}
+			if kw != "" {
+				j.Output.Error(fmt.Sprintf("[%s] %v", kw, err))
+			} else {
+				j.Output.Error(err.Error())
+			}
+		}
 		return
 	}
 
 	resp, err := j.Runner.Execute(&req)
+	txBytes := int64(len(req.Raw))
+	if txBytes == 0 {
+		txBytes = int64(len(req.Method) + len(req.Url) + len(req.Data) + 32)
+	}
+	atomic.AddInt64(&j.bytesSent, txBytes)
 	if err != nil {
 		req.Error = err.Error()
+	} else {
+		rxBytes := int64(len(resp.Raw))
+		if rxBytes == 0 {
+			rxBytes = resp.ContentLength
+		}
+		if rxBytes > 0 {
+			atomic.AddInt64(&j.bytesRecv, rxBytes)
+		}
 	}
 
 	// Audit the request after sending to the runner so we get any changes
@@ -489,6 +572,10 @@ func (j *Job) runTask(ctx jobContext, input map[string][]byte, position int, ret
 	}
 
 	if err != nil {
+		// Ignore cancellations triggered when the user pauses, stops, or cancels the scan
+		if isContextCanceled(err, j.Config.Context) {
+			return
+		}
 		if !retried {
 			// Retry once. The timeout messaging below runs only on the final
 			// failure, so a request that recovers on retry does not also print a
@@ -497,7 +584,24 @@ func (j *Job) runTask(ctx jobContext, input map[string][]byte, position int, ret
 			return
 		}
 		j.incError()
+		if j.CircuitBreaker != nil {
+			j.CircuitBreaker.Record(0, true)
+		}
 		log.Printf("%s", err)
+		if j.Output != nil {
+			kw := ""
+			for _, v := range input {
+				if len(v) > 0 {
+					kw = string(v)
+					break
+				}
+			}
+			if kw != "" {
+				j.Output.Error(fmt.Sprintf("[%s] %v", kw, err))
+			} else {
+				j.Output.Error(err.Error())
+			}
+		}
 		if os.IsTimeout(err) {
 			for name := range j.Config.MatcherManager.GetMatchers() {
 				if name == "time" {
@@ -531,6 +635,31 @@ func (j *Job) runTask(ctx jobContext, input map[string][]byte, position int, ret
 		}
 	}
 
+	if j.CircuitBreaker != nil {
+		payloadHint := ""
+		if v, ok := input["FUZZ"]; ok && len(v) > 0 {
+			payloadHint = string(v)
+		} else {
+			for k, v := range input {
+				if k != "FNHASH" && len(v) > 0 {
+					payloadHint = string(v)
+					break
+				}
+			}
+		}
+		if len(payloadHint) > 128 {
+			payloadHint = payloadHint[:128]
+		}
+		j.CircuitBreaker.RecordSample(SampleObservation{
+			StatusCode:  int(resp.StatusCode),
+			IsError:     false,
+			BodyLength:  resp.ContentLength,
+			WAFHeader:   ExtractWAFSignal(int(resp.StatusCode), resp.Headers),
+			PayloadHint: payloadHint,
+			SoftBlocked: resp.Cancelled && resp.StatusCode == 403,
+		})
+	}
+
 	if j.getSpuriousErrorCounter() > 0 {
 		j.resetSpuriousErrors()
 	}
@@ -549,7 +678,7 @@ func (j *Job) runTask(ctx jobContext, input map[string][]byte, position int, ret
 	j.pauseCheckpoint()
 
 	// Handle autocalibration, must be done after the actual request to ensure sane value in req.Host
-	_ = j.CalibrateIfNeeded(ffuf.HostURLFromRequest(req), input)
+	_ = j.CalibrateIfNeeded(fuzznexus.HostURLFromRequest(req), input)
 
 	// Handle scraper actions
 	if j.Scraper != nil {
@@ -591,7 +720,7 @@ func (j *Job) runTask(ctx jobContext, input map[string][]byte, position int, ret
 	}
 }
 
-func (j *Job) handleScraperResult(resp *ffuf.Response, sres ffuf.ScraperResult) {
+func (j *Job) handleScraperResult(resp *fuzznexus.Response, sres fuzznexus.ScraperResult) {
 	for _, a := range sres.Action {
 		switch a {
 		case "output":
@@ -602,6 +731,14 @@ func (j *Job) handleScraperResult(resp *ffuf.Response, sres ffuf.ScraperResult) 
 
 // CheckStop stops the job if stopping conditions are met
 func (j *Job) CheckStop() {
+	if j.CircuitBreaker != nil {
+		if stop, reason := j.CircuitBreaker.ShouldStop(j.Config.StopOn403, j.Config.StopOnAll, j.Config.StopOnErrors); stop {
+			j.setError(reason)
+			j.Stop()
+			return
+		}
+	}
+
 	counter := j.getCounter()
 	if counter > 50 {
 		// We have enough samples

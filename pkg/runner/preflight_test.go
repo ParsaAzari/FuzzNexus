@@ -12,13 +12,13 @@ import (
 	"sync/atomic"
 	"testing"
 
-	"github.com/ffuf/ffuf/v2/pkg/ffuf"
+	"github.com/parsaazari/fuzznexus/pkg/fuzznexus"
 )
 
 // newTestConfig returns a minimal Config wired up for tests.
-func newTestConfig(targetURL string) *ffuf.Config {
+func newTestConfig(targetURL string) *fuzznexus.Config {
 	ctx, cancel := context.WithCancel(context.Background())
-	conf := ffuf.NewConfig(ctx, cancel)
+	conf := fuzznexus.NewConfig(ctx, cancel)
 	conf.Url = targetURL
 	conf.Threads = 1
 	conf.Timeout = 5
@@ -31,7 +31,7 @@ func newTestConfig(targetURL string) *ffuf.Config {
 // newTestRunner builds a SimpleRunner directly (bypassing NewSimpleRunner) so the
 // config can be injected after construction. It initializes the lane pool that
 // per-thread preflight mode borrows from.
-func newTestRunner(conf *ffuf.Config) *SimpleRunner {
+func newTestRunner(conf *fuzznexus.Config) *SimpleRunner {
 	return &SimpleRunner{config: conf, client: &http.Client{Timeout: 0}, lanes: &lanePool{}}
 }
 
@@ -58,9 +58,9 @@ func TestPreflightVarsSubstitutedIntoMainRequest(t *testing.T) {
 
 	reqFile := writeTempRequest(t, fmt.Sprintf("GET / HTTP/1.1\nHost: %s\n\n", srv.Listener.Addr().String()))
 	conf := newTestConfig(srv.URL)
-	conf.Preflights = []ffuf.PreflightConfig{{
+	conf.Preflights = []fuzznexus.PreflightConfig{{
 		RequestFile: reqFile,
-		Vars:        []ffuf.VarExtract{{Name: "CSRFTOKEN", Regex: `value="([^"]+)"`}},
+		Vars:        []fuzznexus.VarExtract{{Name: "CSRFTOKEN", Regex: `value="([^"]+)"`}},
 	}}
 
 	r := newTestRunner(conf)
@@ -72,7 +72,7 @@ func TestPreflightVarsSubstitutedIntoMainRequest(t *testing.T) {
 		t.Fatalf("CSRFTOKEN = %q, want tok123", vars["CSRFTOKEN"])
 	}
 
-	req := &ffuf.Request{
+	req := &fuzznexus.Request{
 		Url:     "http://x/submit?token=CSRFTOKEN",
 		Headers: map[string]string{"X-CSRF": "CSRFTOKEN"},
 		Data:    []byte("csrf=CSRFTOKEN"),
@@ -118,20 +118,20 @@ func newPreflightServer() *preflightServer {
 
 func (ps *preflightServer) close() { ps.srv.Close() }
 
-func (ps *preflightServer) config(t *testing.T, mode string) *ffuf.Config {
+func (ps *preflightServer) config(t *testing.T, mode string) *fuzznexus.Config {
 	reqFile := writeTempRequest(t, fmt.Sprintf("GET /preflight HTTP/1.1\nHost: %s\n\n", ps.srv.Listener.Addr().String()))
 	conf := newTestConfig(ps.srv.URL)
 	conf.PreflightMode = mode
-	conf.Preflights = []ffuf.PreflightConfig{{
+	conf.Preflights = []fuzznexus.PreflightConfig{{
 		RequestFile: reqFile,
-		Vars:        []ffuf.VarExtract{{Name: "TOKENKW", Regex: `token=(\w+)`}},
+		Vars:        []fuzznexus.VarExtract{{Name: "TOKENKW", Regex: `token=(\w+)`}},
 	}}
 	return conf
 }
 
 // mainReq builds a fresh main request carrying the TOKENKW keyword in a header.
-func mainReq(baseURL string) *ffuf.Request {
-	return &ffuf.Request{
+func mainReq(baseURL string) *fuzznexus.Request {
+	return &fuzznexus.Request{
 		Method:  "GET",
 		Url:     baseURL + "/main",
 		Headers: map[string]string{"X-Token": "TOKENKW"},
@@ -248,9 +248,9 @@ func TestPreflightErrorAbort(t *testing.T) {
 	reqFile := writeTempRequest(t, fmt.Sprintf("GET / HTTP/1.1\nHost: %s\n\n", srv.Listener.Addr().String()))
 	conf := newTestConfig(srv.URL)
 	conf.PreflightError = "abort"
-	conf.Preflights = []ffuf.PreflightConfig{{
+	conf.Preflights = []fuzznexus.PreflightConfig{{
 		RequestFile: reqFile,
-		Vars:        []ffuf.VarExtract{{Name: "X", Regex: `token=(\w+)`}},
+		Vars:        []fuzznexus.VarExtract{{Name: "X", Regex: `token=(\w+)`}},
 	}}
 	r := newTestRunner(conf)
 	if _, err := r.runPreflightChain(conf.Preflights, nil); err == nil {
@@ -267,9 +267,9 @@ func TestPreflightErrorIgnore(t *testing.T) {
 	reqFile := writeTempRequest(t, fmt.Sprintf("GET / HTTP/1.1\nHost: %s\n\n", srv.Listener.Addr().String()))
 	conf := newTestConfig(srv.URL)
 	conf.PreflightError = "ignore"
-	conf.Preflights = []ffuf.PreflightConfig{{
+	conf.Preflights = []fuzznexus.PreflightConfig{{
 		RequestFile: reqFile,
-		Vars:        []ffuf.VarExtract{{Name: "X", Regex: `token=(\w+)`}},
+		Vars:        []fuzznexus.VarExtract{{Name: "X", Regex: `token=(\w+)`}},
 	}}
 	r := newTestRunner(conf)
 	vars, err := r.runPreflightChain(conf.Preflights, nil)

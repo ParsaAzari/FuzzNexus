@@ -7,7 +7,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/ffuf/ffuf/v2/pkg/ffuf"
+	"github.com/parsaazari/fuzznexus/pkg/fuzznexus"
 )
 
 func TestStripCommentsIgnoresCommentLines(t *testing.T) {
@@ -36,7 +36,7 @@ func TestWordlistAcceptsLinesLargerThanScannerDefault(t *testing.T) {
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	config := ffuf.NewConfig(ctx, cancel)
+	config := fuzznexus.NewConfig(ctx, cancel)
 	input, err := NewWordlistInput("FUZZ", wordlist, &config)
 	if err != nil {
 		t.Fatalf("reading large wordlist entry: %v", err)

@@ -3,7 +3,7 @@ package interactive
 import (
 	"testing"
 
-	"github.com/ffuf/ffuf/v2/pkg/ffuf"
+	"github.com/parsaazari/fuzznexus/pkg/fuzznexus"
 )
 
 // TestResultProbeUsesLineCount guards the fl-filter bug: the probe rebuilt to
@@ -11,7 +11,7 @@ import (
 // from the result's line count, not its length. Before the fix an in-console
 // "fl" (line count) filter compared against ContentLength.
 func TestResultProbeUsesLineCount(t *testing.T) {
-	res := ffuf.Result{
+	res := fuzznexus.Result{
 		StatusCode:    200,
 		ContentLength: 4096,
 		ContentWords:  100,

@@ -5,7 +5,7 @@ import (
 	"sync"
 	"testing"
 
-	"github.com/ffuf/ffuf/v2/pkg/ffuf"
+	"github.com/parsaazari/fuzznexus/pkg/fuzznexus"
 )
 
 // TestStdoutput_ConcurrentResult locks the fix for an unsynchronized append:
@@ -15,7 +15,7 @@ import (
 //
 // Run with -race to also catch the data race directly.
 func TestStdoutput_ConcurrentResult(t *testing.T) {
-	conf := &ffuf.Config{}
+	conf := &fuzznexus.Config{}
 	s := NewStdoutput(conf)
 
 	const n = 200
@@ -24,9 +24,9 @@ func TestStdoutput_ConcurrentResult(t *testing.T) {
 		wg.Add(1)
 		go func(i int) {
 			defer wg.Done()
-			s.Result(ffuf.Response{
+			s.Result(fuzznexus.Response{
 				StatusCode: 200,
-				Request: &ffuf.Request{
+				Request: &fuzznexus.Request{
 					Input: map[string][]byte{"FUZZ": []byte(fmt.Sprintf("w%d", i))},
 					Url:   fmt.Sprintf("http://example/%d", i),
 				},

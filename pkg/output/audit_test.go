@@ -1,10 +1,13 @@
 package output
 
 import (
+	"encoding/base64"
+	"encoding/json"
 	"os"
+	"strings"
 	"testing"
 
-	"github.com/ffuf/ffuf/v2/pkg/ffuf"
+	"github.com/parsaazari/fuzznexus/pkg/fuzznexus"
 )
 
 func TestAuditLogger(t *testing.T) {
@@ -55,10 +58,6 @@ func TestAuditLogger(t *testing.T) {
 }
 
 func TestAuditLogWrite(t *testing.T) {
-	expected := `{"Type":"ffuf.Config","Data":{"auditlog":"","autocalibration":false,"autocalibration_keyword":"","autocalibration_perhost":false,"autocalibration_strategies":null,"autocalibration_strings":null,"colors":false,"cmdline":"","configfile":"","postdata":"{\"quote\":\"I'll still be here tomorrow to high five you yesterday, my friend. Peace.\"}","debuglog":"","delay":{"Min":0,"Max":0,"IsRange":false,"HasDelay":false},"dirsearch_compatibility":false,"encoders":null,"extensions":null,"fmode":"","follow_redirects":false,"headers":{"Content-Type":"application/json","baz":"wibble","foo":"bar"},"ignorebody":false,"ignore_wordlist_comments":false,"inputmode":"","cmd_inputnum":0,"inputproviders":null,"inputshell":"","json":false,"matchers":null,"mmode":"","maxtime":0,"maxtime_job":0,"method":"POST","noninteractive":false,"outputdirectory":"","outputfile":"","outputformat":"","OutputSkipEmptyFile":false,"proxyurl":"","quiet":false,"rate":0,"raw":false,"recursion":false,"recursion_depth":0,"recursion_strategy":"","replayproxyurl":"","requestfile":"","requestproto":"","scraperfile":"","scrapers":"","sni":"","stop_403":false,"stop_all":false,"stop_errors":false,"threads":0,"timeout":0,"url":"http://example.com/aaaa","verbose":false,"wordlists":null,"http2":false,"client-cert":"","client-key":"","preflights":null,"postflights":null,"preflight_mode":"","preflight_error":"","preflight_anyhost":false}}
-{"Type":"ffuf.Request","Data":{"Method":"POST","Host":"","Url":"http://example.com/aaaa","Headers":{"Content-Type":"application/json","baz":"wibble","foo":"bar"},"Data":"eyJxdW90ZSI6IkknbGwgc3RpbGwgYmUgaGVyZSB0b21vcnJvdyB0byBoaWdoIGZpdmUgeW91IHllc3RlcmRheSwgbXkgZnJpZW5kLiBQZWFjZS4ifQ==","Input":null,"Position":0,"Raw":"","Error":"","Timestamp":"0001-01-01T00:00:00Z"}}
-`
-
 	headers := make(map[string]string)
 	headers["foo"] = "bar"
 	headers["baz"] = "wibble"
@@ -66,20 +65,25 @@ func TestAuditLogWrite(t *testing.T) {
 
 	data := "{\"quote\":\"I'll still be here tomorrow to high five you yesterday, my friend. Peace.\"}"
 
-	req := ffuf.Request{Method: "POST", Url: "http://example.com/aaaa", Headers: headers, Data: []byte(data)}
-	config := ffuf.Config{Method: "POST", Url: "http://example.com/aaaa", Headers: headers, Data: data}
+	req := fuzznexus.Request{Method: "POST", Url: "http://example.com/aaaa", Headers: headers, Data: []byte(data)}
+	config := fuzznexus.Config{Method: "POST", Url: "http://example.com/aaaa", Headers: headers, Data: data}
 
-	file, _ := os.CreateTemp("", "prefix")
+	file, err := os.CreateTemp("", "prefix")
+	if err != nil {
+		t.Fatal(err)
+	}
 	filename := file.Name()
-	file.Close()
+	if err := file.Close(); err != nil {
+		t.Fatal(err)
+	}
 	audit, err := NewAuditLogger(filename)
 
 	if err != nil {
-		t.Errorf("Error creating audit logger: %s", err)
+		t.Fatalf("Error creating audit logger: %s", err)
 	}
 
 	if audit == nil {
-		t.Errorf("Audit was nil, expected non-nil")
+		t.Fatal("Audit was nil, expected non-nil")
 	}
 
 	// test attempting to log a bung object and erroring
@@ -108,11 +112,41 @@ func TestAuditLogWrite(t *testing.T) {
 	// re-read and check the audit log
 	f, err := os.ReadFile(filename)
 	if err != nil {
-		t.Errorf("Error reading audit log: %s", err)
+		t.Fatal("Error reading audit log:", err)
 	}
 
-	if string(f) != expected {
-		t.Errorf("Audit write did not produce the expected logfile.")
+	type auditRecord struct {
+		Type string          `json:"Type"`
+		Data json.RawMessage `json:"Data"`
+	}
+	lines := strings.Split(strings.TrimSpace(string(f)), "\n")
+	if len(lines) != 2 {
+		t.Fatalf("expected two audit records, got %d", len(lines))
+	}
+	records := make([]auditRecord, len(lines))
+	for i, line := range lines {
+		if err := json.Unmarshal([]byte(line), &records[i]); err != nil {
+			t.Fatalf("invalid audit record %d: %v", i, err)
+		}
+	}
+	if records[0].Type != "fuzznexus.Config" || records[1].Type != "fuzznexus.Request" {
+		t.Fatalf("unexpected audit record types: %q, %q", records[0].Type, records[1].Type)
+	}
+
+	var gotConfig map[string]interface{}
+	if err := json.Unmarshal(records[0].Data, &gotConfig); err != nil {
+		t.Fatalf("invalid config record: %v", err)
+	}
+	if gotConfig["method"] != config.Method || gotConfig["url"] != config.Url || gotConfig["postdata"] != config.Data {
+		t.Fatalf("config record does not contain the written config: %#v", gotConfig)
+	}
+
+	var gotRequest map[string]interface{}
+	if err := json.Unmarshal(records[1].Data, &gotRequest); err != nil {
+		t.Fatalf("invalid request record: %v", err)
+	}
+	if gotRequest["Method"] != req.Method || gotRequest["Url"] != req.Url || gotRequest["Data"] != base64.StdEncoding.EncodeToString(req.Data) {
+		t.Fatalf("request record does not contain the written request: %#v", gotRequest)
 	}
 
 	// writing to a closed audit log should fail

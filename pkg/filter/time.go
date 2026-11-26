@@ -6,7 +6,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/ffuf/ffuf/v2/pkg/ffuf"
+	"github.com/parsaazari/fuzznexus/pkg/fuzznexus"
 )
 
 type TimeFilter struct {
@@ -16,7 +16,7 @@ type TimeFilter struct {
 	valueRaw string
 }
 
-func NewTimeFilter(value string) (ffuf.FilterProvider, error) {
+func NewTimeFilter(value string) (fuzznexus.FilterProvider, error) {
 	var milliseconds int64
 	gt, lt := false, false
 
@@ -42,7 +42,7 @@ func (f *TimeFilter) MarshalJSON() ([]byte, error) {
 	})
 }
 
-func (f *TimeFilter) Filter(response *ffuf.Response) (bool, error) {
+func (f *TimeFilter) Filter(response *fuzznexus.Response) (bool, error) {
 	if f.gt {
 		if response.Duration.Milliseconds() > f.ms {
 			return true, nil

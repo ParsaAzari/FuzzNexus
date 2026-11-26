@@ -7,7 +7,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/ffuf/ffuf/v2/pkg/ffuf"
+	"github.com/parsaazari/fuzznexus/pkg/fuzznexus"
 )
 
 // headersServer sends a body with a token and a set of headers, some of which
@@ -25,7 +25,7 @@ func headersServer() *httptest.Server {
 
 func regexVar(t *testing.T, r *SimpleRunner, srv *httptest.Server, regex string) (string, error) {
 	t.Helper()
-	return runVar(t, r, srv, "/", ffuf.VarExtract{Name: "V", Regex: regex})
+	return runVar(t, r, srv, "/", fuzznexus.VarExtract{Name: "V", Regex: regex})
 }
 
 // A regex that matches the body keeps capturing from the body, even when a

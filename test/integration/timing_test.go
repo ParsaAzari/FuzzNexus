@@ -12,8 +12,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/ffuf/ffuf/v2/pkg/ffuf"
-	"github.com/ffuf/ffuf/v2/pkg/testtarget"
+	ffuf "github.com/parsaazari/fuzznexus/pkg/fuzznexus"
+	"github.com/parsaazari/fuzznexus/pkg/testtarget"
 )
 
 // TestTimeMatcher: /sleep/1000 responds ~1s, /sleep/1 near-instant, so a

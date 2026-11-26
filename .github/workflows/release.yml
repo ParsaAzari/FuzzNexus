@@ -1,38 +1,313 @@
-name: goreleaser
+name: Release Universal Bundles
 
 on:
   push:
     tags:
       - 'v*'
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Release version (e.g. 1.0.0)'
+        required: false
+        default: '1.0.0'
 
 permissions:
   contents: write
 
 jobs:
-  goreleaser:
+  # ============================================================================
+  # 1. macOS Universal DMG (Apple Silicon + Intel)
+  # ============================================================================
+  build-macos:
+    name: Build macOS Universal DMG
+    runs-on: macos-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.26'
+          cache: true
+          cache-dependency-path: |
+            go.sum
+            fuzznexus-desktop/go.sum
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: 'npm'
+          cache-dependency-path: fuzznexus-desktop/frontend/package.json
+
+      - name: Install Wails & create-dmg
+        run: |
+          go install github.com/wailsapp/wails/v2/cmd/wails@latest
+          brew install create-dmg
+
+      - name: Build Frontend
+        working-directory: fuzznexus-desktop/frontend
+        run: |
+          npm install
+          npm run build
+
+      - name: Build Wails macOS Universal Application
+        working-directory: fuzznexus-desktop
+        run: wails build -platform darwin/universal -trimpath -ldflags="-s -w"
+
+      - name: Package macOS Universal DMG
+        run: |
+          mkdir -p dist
+          create-dmg \
+            --volname "FuzzNexus" \
+            --window-pos 250 150 \
+            --window-size 660 420 \
+            --icon-size 110 \
+            --icon "FuzzNexus.app" 175 210 \
+            --hide-extension "FuzzNexus.app" \
+            --app-drop-link 485 210 \
+            --no-internet-enable \
+            "dist/FuzzNexus-1.0.0-macOS-Universal.dmg" \
+            "fuzznexus-desktop/build/bin/FuzzNexus.app" || true
+
+          if [ ! -f "dist/FuzzNexus-1.0.0-macOS-Universal.dmg" ]; then
+            hdiutil create -volname "FuzzNexus" -srcfolder "fuzznexus-desktop/build/bin/FuzzNexus.app" -ov -format UDZO "dist/FuzzNexus-1.0.0-macOS-Universal.dmg"
+          fi
+
+      - name: Upload macOS Universal DMG
+        uses: actions/upload-artifact@v4
+        with:
+          name: FuzzNexus-1.0.0-macOS-Universal.dmg
+          path: dist/FuzzNexus-1.0.0-macOS-Universal.dmg
+
+  # ============================================================================
+  # 2. Windows x86_64 Standalone Zip Package
+  # ============================================================================
+  build-windows:
+    name: Build Windows x64 Package
+    runs-on: windows-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.26'
+          cache: true
+          cache-dependency-path: |
+            go.sum
+            fuzznexus-desktop/go.sum
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: 'npm'
+          cache-dependency-path: fuzznexus-desktop/frontend/package.json
+
+      - name: Install Wails
+        run: go install github.com/wailsapp/wails/v2/cmd/wails@latest
+
+      - name: Build Frontend
+        working-directory: fuzznexus-desktop/frontend
+        run: |
+          npm install
+          npm run build
+
+      - name: Build Wails Windows Executable
+        working-directory: fuzznexus-desktop
+        run: wails build -platform windows/amd64 -trimpath -ldflags="-s -w"
+
+      - name: Package Windows Zip Bundle
+        shell: bash
+        run: |
+          mkdir -p dist package_win
+          cp fuzznexus-desktop/build/bin/FuzzNexus.exe package_win/FuzzNexus.exe
+          cat << 'EOF' > package_win/README.txt
+          FuzzNexus v1.0.0
+          Professional Fast Web Fuzzer & Security Assessment Platform
+          Developed by Parsa Azari (https://parsaazari.com)
+
+          Instructions:
+          1. Double-click FuzzNexus.exe to run.
+          2. Requires: Windows 10/11 64-bit with Microsoft WebView2 Runtime.
+
+          Copyright (c) 2026 Parsa Azari. All rights reserved.
+          EOF
+          cd package_win
+          7z a -tzip ../dist/FuzzNexus-1.0.0-Windows-x64.zip *
+
+      - name: Upload Windows x64 Zip
+        uses: actions/upload-artifact@v4
+        with:
+          name: FuzzNexus-1.0.0-Windows-x64.zip
+          path: dist/FuzzNexus-1.0.0-Windows-x64.zip
+
+  # ============================================================================
+  # 3. Linux x86_64 Desktop Package
+  # ============================================================================
+  build-linux:
+    name: Build Linux x64 Package
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout
-        uses: actions/checkout@v7
-        with:
-          fetch-depth: 0
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
       - name: Set up Go
-        uses: actions/setup-go@v7
+        uses: actions/setup-go@v5
         with:
-          go-version: stable
-      - name: Import GPG key
-        id: import_gpg
-        uses: crazy-max/ghaction-import-gpg@v7
+          go-version: '1.26'
+          cache: true
+          cache-dependency-path: |
+            go.sum
+            fuzznexus-desktop/go.sum
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
         with:
-          gpg_private_key: ${{ secrets.GPG_PRIVATE_KEY }}
-          passphrase: ${{ secrets.GPG_PASSPHRASE }}
-          fingerprint: D4060D6A12CE425E19693F3EF860001E7E0108E9
-      - name: Run GoReleaser
-        uses: goreleaser/goreleaser-action@v7
+          node-version: 22
+          cache: 'npm'
+          cache-dependency-path: fuzznexus-desktop/frontend/package.json
+
+      - name: Install Linux Build Dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libgtk-3-dev libwebkit2gtk-4.0-dev pkg-config
+
+      - name: Install Wails
+        run: go install github.com/wailsapp/wails/v2/cmd/wails@latest
+
+      - name: Build Frontend
+        working-directory: fuzznexus-desktop/frontend
+        run: |
+          npm install
+          npm run build
+
+      - name: Build Wails Linux Binary
+        working-directory: fuzznexus-desktop
+        run: wails build -platform linux/amd64 -trimpath -ldflags="-s -w"
+
+      - name: Package Linux Desktop Tarball
+        run: |
+          mkdir -p dist staging/FuzzNexus-1.0.0/bin staging/FuzzNexus-1.0.0/share/applications staging/FuzzNexus-1.0.0/share/icons
+          CLI_BINARY="fuzznexus-desktop/build/bin/FuzzNexus"
+          if [ ! -f "$CLI_BINARY" ]; then
+            CLI_BINARY="fuzznexus-desktop/build/bin/fuzznexus"
+          fi
+          cp "$CLI_BINARY" staging/FuzzNexus-1.0.0/bin/fuzznexus
+          chmod +x staging/FuzzNexus-1.0.0/bin/fuzznexus
+          if [ -d "fuzznexus-desktop/build/linux/icons" ]; then
+            cp -R fuzznexus-desktop/build/linux/icons/* staging/FuzzNexus-1.0.0/share/icons/
+          fi
+          if [ -f "fuzznexus-desktop/build/linux/fuzznexus.desktop" ]; then
+            cp fuzznexus-desktop/build/linux/fuzznexus.desktop staging/FuzzNexus-1.0.0/share/applications/
+          fi
+          cat << 'EOF' > staging/FuzzNexus-1.0.0/install.sh
+          #!/usr/bin/env bash
+          set -e
+          PREFIX="${HOME}/.local"
+          mkdir -p "${PREFIX}/bin" "${PREFIX}/share/applications" "${PREFIX}/share/icons"
+          cp bin/fuzznexus "${PREFIX}/bin/"
+          chmod +x "${PREFIX}/bin/fuzznexus"
+          cp share/applications/fuzznexus.desktop "${PREFIX}/share/applications/"
+          cp -R share/icons/* "${PREFIX}/share/icons/" 2>/dev/null || true
+          echo "FuzzNexus installed to ${PREFIX}/bin/fuzznexus"
+          EOF
+          chmod +x staging/FuzzNexus-1.0.0/install.sh
+          cd staging
+          tar -czf ../dist/FuzzNexus-1.0.0-Linux-x86_64.tar.gz FuzzNexus-1.0.0
+
+      - name: Upload Linux x64 Tarball
+        uses: actions/upload-artifact@v4
         with:
-          distribution: goreleaser
-          version: latest
-          args: release --clean
+          name: FuzzNexus-1.0.0-Linux-x86_64.tar.gz
+          path: dist/FuzzNexus-1.0.0-Linux-x86_64.tar.gz
+
+  # ============================================================================
+  # 4. Publish the GitHub Release with the three platform packages
+  # ============================================================================
+  publish-release:
+    name: Publish FuzzNexus Release
+    needs: [build-macos, build-windows, build-linux]
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/v') || github.event_name == 'workflow_dispatch'
+    steps:
+      - name: Download macOS DMG
+        uses: actions/download-artifact@v4
+        with:
+          name: FuzzNexus-1.0.0-macOS-Universal.dmg
+          path: release-assets
+
+      - name: Download Windows ZIP
+        uses: actions/download-artifact@v4
+        with:
+          name: FuzzNexus-1.0.0-Windows-x64.zip
+          path: release-assets
+
+      - name: Download Linux Tarball
+        uses: actions/download-artifact@v4
+        with:
+          name: FuzzNexus-1.0.0-Linux-x86_64.tar.gz
+          path: release-assets
+
+      - name: Verify Exactly 3 Release Artifacts
+        run: |
+          echo "Verifying release assets:"
+          ls -lh release-assets/
+          COUNT=$(find release-assets/ -maxdepth 1 -type f | wc -l)
+          if [ "$COUNT" -ne 3 ]; then
+            echo "Error: Expected exactly 3 artifacts, found $COUNT"
+            exit 1
+          fi
+          echo "Verified: the three platform packages are ready for release."
+
+      - name: Create or Update GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: release-assets/*
+          name: FuzzNexus v1.0.0 — Open-source Web Fuzzing Platform
+          body: |
+            ## FuzzNexus v1.0.0
+
+            FuzzNexus is an MIT-licensed, open-source web fuzzing and
+            reconnaissance platform. The release combines a shared Go scanning
+            engine with a cross-platform Wails desktop application for scan
+            configuration, live results, analytics, filters, and wordlist
+            management.
+
+            ### Release packages
+
+            | Platform | Package | Notes |
+            | --- | --- | --- |
+            | macOS | `FuzzNexus-1.0.0-macOS-Universal.dmg` | Apple Silicon and Intel |
+            | Windows | `FuzzNexus-1.0.0-Windows-x64.zip` | Windows 10/11, WebView2 required |
+            | Linux | `FuzzNexus-1.0.0-Linux-x86_64.tar.gz` | Includes a local install script |
+
+            ### Highlights
+
+            - Shared CLI and desktop scanning engine.
+            - Response matchers and filters for status, size, words, lines,
+              regex, and time.
+            - Recursive scanning, auto-calibration, rate limiting, and
+              circuit-breaker safeguards.
+            - Light and dark desktop themes with analytics, filters, request
+              inspection, and built-in wordlists.
+
+            See the [README](https://github.com/ParsaAzari/FuzzNexus#readme) for
+            installation instructions, usage examples, architecture notes, and
+            responsible-use guidance.
+
+            ### License and attribution
+
+            FuzzNexus is released under the MIT License. Attribution for core
+            components derived from ffuf is preserved in the repository's
+            [NOTICE](https://github.com/ParsaAzari/FuzzNexus/blob/main/NOTICE)
+            file.
+
+            Only scan systems you own or are explicitly authorized to test.
+          draft: false
+          prerelease: false
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          GPG_FINGERPRINT: ${{ steps.import_gpg.outputs.fingerprint }}

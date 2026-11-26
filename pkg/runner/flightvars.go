@@ -9,7 +9,7 @@ import (
 
 	"github.com/PuerkitoBio/goquery"
 
-	"github.com/ffuf/ffuf/v2/pkg/ffuf"
+	"github.com/parsaazari/fuzznexus/pkg/fuzznexus"
 )
 
 // flightResponse is what a variable can be read from: one preflight or
@@ -49,21 +49,21 @@ func (fr *flightResponse) document() (*goquery.Document, error) {
 // lookup returns the value of key in one source, and whether it was present.
 func (fr *flightResponse) lookup(source, key string) (string, bool) {
 	switch source {
-	case ffuf.VarSourceForm:
+	case fuzznexus.VarSourceForm:
 		doc, err := fr.document()
 		if err != nil {
 			return "", false
 		}
 		return formValue(doc, key)
-	case ffuf.VarSourceMeta:
+	case fuzznexus.VarSourceMeta:
 		doc, err := fr.document()
 		if err != nil {
 			return "", false
 		}
 		return metaValue(doc, key)
-	case ffuf.VarSourceCookie:
+	case fuzznexus.VarSourceCookie:
 		return cookieValue(fr.header, key)
-	case ffuf.VarSourceHeader:
+	case fuzznexus.VarSourceHeader:
 		// http.Header.Values canonicalizes the name, so the match is
 		// case-insensitive. Only the first value is used.
 		if vals := fr.header.Values(key); len(vals) > 0 {
@@ -145,18 +145,18 @@ func cookieValue(header http.Header, name string) (string, bool) {
 }
 
 // extractByName resolves a -preflight-var-auto variable. A pinned source is read
-// directly. VarSourceAuto tries every source in ffuf.VarSources order; the first
+// directly. VarSourceAuto tries every source in fuzznexus.VarSources order; the first
 // response that resolves it pins the source for the rest of the run, so a later
 // error page carrying a same-named header can't quietly swap the value. If the
 // key is present in two sources with different values, it refuses to guess.
-func (r *SimpleRunner) extractByName(ve *ffuf.VarExtract, fr *flightResponse) (string, error) {
+func (r *SimpleRunner) extractByName(ve *fuzznexus.VarExtract, fr *flightResponse) (string, error) {
 	source := ve.Source
-	if source == ffuf.VarSourceAuto {
+	if source == fuzznexus.VarSourceAuto {
 		if pinned, ok := r.autoPins.Load(ve); ok {
 			source = pinned.(string)
 		}
 	}
-	if source != ffuf.VarSourceAuto {
+	if source != fuzznexus.VarSourceAuto {
 		if val, ok := fr.lookup(source, ve.Key); ok {
 			return val, nil
 		}
@@ -164,7 +164,7 @@ func (r *SimpleRunner) extractByName(ve *ffuf.VarExtract, fr *flightResponse) (s
 	}
 
 	var picked, val string
-	for _, s := range ffuf.VarSources {
+	for _, s := range fuzznexus.VarSources {
 		v, ok := fr.lookup(s, ve.Key)
 		if !ok {
 			continue

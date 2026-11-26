@@ -8,7 +8,7 @@ import (
 	"sync"
 	"testing"
 
-	"github.com/ffuf/ffuf/v2/pkg/ffuf"
+	"github.com/parsaazari/fuzznexus/pkg/fuzznexus"
 )
 
 const flightVarsPage = `<!doctype html><html><head>
@@ -50,10 +50,10 @@ func flightVarsServer() *httptest.Server {
 }
 
 // runVar runs a one-var preflight chain against srv and returns the value.
-func runVar(t *testing.T, r *SimpleRunner, srv *httptest.Server, path string, ve ffuf.VarExtract) (string, error) {
+func runVar(t *testing.T, r *SimpleRunner, srv *httptest.Server, path string, ve fuzznexus.VarExtract) (string, error) {
 	t.Helper()
 	reqFile := writeTempRequest(t, fmt.Sprintf("GET %s HTTP/1.1\nHost: %s\n\n", path, srv.Listener.Addr().String()))
-	chain := []ffuf.PreflightConfig{{RequestFile: reqFile, Vars: []ffuf.VarExtract{ve}}}
+	chain := []fuzznexus.PreflightConfig{{RequestFile: reqFile, Vars: []fuzznexus.VarExtract{ve}}}
 	vars, err := r.runPreflightChain(chain, nil)
 	return vars[ve.Name], err
 }
@@ -66,23 +66,23 @@ func TestFlightVarsPinnedSources(t *testing.T) {
 		source, key, want string
 	}{
 		// Entities decoded, base64 characters left alone.
-		{ffuf.VarSourceForm, "csrf_token", "a&b+c/d="},
-		{ffuf.VarSourceForm, "data[_Token][key]", "php-tok"},
-		{ffuf.VarSourceForm, "loginForm:token", "attr-first"},
-		{ffuf.VarSourceForm, "remember", "checked-box"},
-		{ffuf.VarSourceForm, "note", "text <area>"},
-		{ffuf.VarSourceForm, "lang", "fi"},
-		{ffuf.VarSourceForm, "plain", "First"},
-		{ffuf.VarSourceMeta, "csrf-token", "meta-tok"},
-		{ffuf.VarSourceCookie, "sessionid", "sess-1"},
+		{fuzznexus.VarSourceForm, "csrf_token", "a&b+c/d="},
+		{fuzznexus.VarSourceForm, "data[_Token][key]", "php-tok"},
+		{fuzznexus.VarSourceForm, "loginForm:token", "attr-first"},
+		{fuzznexus.VarSourceForm, "remember", "checked-box"},
+		{fuzznexus.VarSourceForm, "note", "text <area>"},
+		{fuzznexus.VarSourceForm, "lang", "fi"},
+		{fuzznexus.VarSourceForm, "plain", "First"},
+		{fuzznexus.VarSourceMeta, "csrf-token", "meta-tok"},
+		{fuzznexus.VarSourceCookie, "sessionid", "sess-1"},
 		// Last Set-Cookie for a name wins; the value is not percent-decoded.
-		{ffuf.VarSourceCookie, "XSRF-TOKEN", "tok%3D%3D"},
-		{ffuf.VarSourceHeader, "x-csrf-token", "hdr-tok"},
+		{fuzznexus.VarSourceCookie, "XSRF-TOKEN", "tok%3D%3D"},
+		{fuzznexus.VarSourceHeader, "x-csrf-token", "hdr-tok"},
 	}
 	for _, c := range cases {
 		t.Run(c.source+"/"+c.key, func(t *testing.T) {
 			r := newTestRunner(newTestConfig(srv.URL))
-			got, err := runVar(t, r, srv, "/", ffuf.VarExtract{Name: "V", Source: c.source, Key: c.key})
+			got, err := runVar(t, r, srv, "/", fuzznexus.VarExtract{Name: "V", Source: c.source, Key: c.key})
 			if err != nil {
 				t.Fatalf("unexpected error: %s", err)
 			}
@@ -96,13 +96,13 @@ func TestFlightVarsPinnedSources(t *testing.T) {
 func TestFlightVarsNotFound(t *testing.T) {
 	srv := flightVarsServer()
 	defer srv.Close()
-	for _, ve := range []ffuf.VarExtract{
-		{Name: "V", Source: ffuf.VarSourceForm, Key: "nope"},
-		{Name: "V", Source: ffuf.VarSourceMeta, Key: "csrf_token"},
+	for _, ve := range []fuzznexus.VarExtract{
+		{Name: "V", Source: fuzznexus.VarSourceForm, Key: "nope"},
+		{Name: "V", Source: fuzznexus.VarSourceMeta, Key: "csrf_token"},
 		// A cookie being deleted is not a value.
-		{Name: "V", Source: ffuf.VarSourceCookie, Key: "gone"},
-		{Name: "V", Source: ffuf.VarSourceHeader, Key: "X-Missing"},
-		{Name: "V", Source: ffuf.VarSourceAuto, Key: "nope"},
+		{Name: "V", Source: fuzznexus.VarSourceCookie, Key: "gone"},
+		{Name: "V", Source: fuzznexus.VarSourceHeader, Key: "X-Missing"},
+		{Name: "V", Source: fuzznexus.VarSourceAuto, Key: "nope"},
 	} {
 		r := newTestRunner(newTestConfig(srv.URL))
 		if _, err := runVar(t, r, srv, "/", ve); err == nil || !strings.Contains(err.Error(), "not found") {
@@ -124,7 +124,7 @@ func TestFlightVarsAutoOrder(t *testing.T) {
 	}
 	for key, want := range cases {
 		r := newTestRunner(newTestConfig(srv.URL))
-		got, err := runVar(t, r, srv, "/", ffuf.VarExtract{Name: "V", Source: ffuf.VarSourceAuto, Key: key})
+		got, err := runVar(t, r, srv, "/", fuzznexus.VarExtract{Name: "V", Source: fuzznexus.VarSourceAuto, Key: key})
 		if err != nil || got != want {
 			t.Errorf("%s: got %q, %v; want %q", key, got, err, want)
 		}
@@ -136,7 +136,7 @@ func TestFlightVarsAutoAmbiguous(t *testing.T) {
 	srv := flightVarsServer()
 	defer srv.Close()
 	r := newTestRunner(newTestConfig(srv.URL))
-	_, err := runVar(t, r, srv, "/", ffuf.VarExtract{Name: "DUP", Source: ffuf.VarSourceAuto, Key: "dup"})
+	_, err := runVar(t, r, srv, "/", fuzznexus.VarExtract{Name: "DUP", Source: fuzznexus.VarSourceAuto, Key: "dup"})
 	if err == nil || !strings.Contains(err.Error(), "pin one with DUP:[form]dup") {
 		t.Fatalf("error = %v, want an ambiguity error suggesting DUP:[form]dup", err)
 	}
@@ -150,7 +150,7 @@ func TestFlightVarsAutoPinHolds(t *testing.T) {
 	r := newTestRunner(newTestConfig(srv.URL))
 	reqFile := writeTempRequest(t, fmt.Sprintf("GET / HTTP/1.1\nHost: %s\n\n", srv.Listener.Addr().String()))
 	noForm := writeTempRequest(t, fmt.Sprintf("GET /noform HTTP/1.1\nHost: %s\n\n", srv.Listener.Addr().String()))
-	chain := []ffuf.PreflightConfig{{RequestFile: reqFile, Vars: []ffuf.VarExtract{{Name: "V", Source: ffuf.VarSourceAuto, Key: "csrf_token"}}}}
+	chain := []fuzznexus.PreflightConfig{{RequestFile: reqFile, Vars: []fuzznexus.VarExtract{{Name: "V", Source: fuzznexus.VarSourceAuto, Key: "csrf_token"}}}}
 
 	if vars, err := r.runPreflightChain(chain, nil); err != nil || vars["V"] != "a&b+c/d=" {
 		t.Fatalf("first run: %v, %v", vars, err)
@@ -173,14 +173,14 @@ func TestFlightVarsControlCharsRefused(t *testing.T) {
 	srv := flightVarsServer()
 	defer srv.Close()
 	r := newTestRunner(newTestConfig(srv.URL))
-	_, err := runVar(t, r, srv, "/", ffuf.VarExtract{Name: "V", Source: ffuf.VarSourceForm, Key: "evil"})
+	_, err := runVar(t, r, srv, "/", fuzznexus.VarExtract{Name: "V", Source: fuzznexus.VarSourceForm, Key: "evil"})
 	if err == nil || !strings.Contains(err.Error(), "control character") {
 		t.Fatalf("error = %v, want a control character refusal", err)
 	}
 	r.config.PreflightError = "ignore"
-	vars, err := r.runPreflightChain([]ffuf.PreflightConfig{{
+	vars, err := r.runPreflightChain([]fuzznexus.PreflightConfig{{
 		RequestFile: writeTempRequest(t, fmt.Sprintf("GET / HTTP/1.1\nHost: %s\n\n", srv.Listener.Addr().String())),
-		Vars:        []ffuf.VarExtract{{Name: "V", Source: ffuf.VarSourceForm, Key: "evil"}},
+		Vars:        []fuzznexus.VarExtract{{Name: "V", Source: fuzznexus.VarSourceForm, Key: "evil"}},
 	}}, nil)
 	if err != nil {
 		t.Fatalf("ignore mode: %s", err)
@@ -197,10 +197,10 @@ func TestFlightVarsCannotChangeDestination(t *testing.T) {
 	}))
 	defer srv.Close()
 	r := destRunner(t, srv.URL+"/FUZZ", false)
-	chain := []ffuf.PreflightConfig{
+	chain := []fuzznexus.PreflightConfig{
 		{
 			RequestFile: writeTempRequest(t, fmt.Sprintf("GET / HTTP/1.1\nHost: %s\n\n", srv.Listener.Addr().String())),
-			Vars:        []ffuf.VarExtract{{Name: "NEXT", Source: ffuf.VarSourceHeader, Key: "X-Next"}},
+			Vars:        []fuzznexus.VarExtract{{Name: "NEXT", Source: fuzznexus.VarSourceHeader, Key: "X-Next"}},
 		},
 		{RequestFile: writeTempRequest(t, "GET NEXT HTTP/1.1\n\n")},
 	}
@@ -213,7 +213,7 @@ func TestFlightVarsCannotChangeDestination(t *testing.T) {
 // Concurrent first resolutions of one auto var agree on a single pin.
 func TestFlightVarsAutoPinConcurrent(t *testing.T) {
 	r := newTestRunner(newTestConfig("http://unused"))
-	ve := &ffuf.VarExtract{Name: "V", Source: ffuf.VarSourceAuto, Key: "tok"}
+	ve := &fuzznexus.VarExtract{Name: "V", Source: fuzznexus.VarSourceAuto, Key: "tok"}
 	withForm := &flightResponse{body: []byte(`<input name="tok" value="same">`), header: http.Header{}}
 	withHeader := &flightResponse{header: http.Header{"Tok": {"same"}}}
 	var wg sync.WaitGroup
@@ -230,7 +230,7 @@ func TestFlightVarsAutoPinConcurrent(t *testing.T) {
 	}
 	wg.Wait()
 	pinned, ok := r.autoPins.Load(ve)
-	if !ok || (pinned != ffuf.VarSourceForm && pinned != ffuf.VarSourceHeader) {
+	if !ok || (pinned != fuzznexus.VarSourceForm && pinned != fuzznexus.VarSourceHeader) {
 		t.Fatalf("pin = %v, %v", pinned, ok)
 	}
 }
@@ -239,7 +239,7 @@ func TestFlightVarsAutoPinConcurrent(t *testing.T) {
 // lower-priority source reads the pinned source instead of failing as ambiguous.
 func TestFlightVarsAutoPinSkipsAmbiguity(t *testing.T) {
 	r := newTestRunner(newTestConfig("http://unused"))
-	ve := &ffuf.VarExtract{Name: "V", Source: ffuf.VarSourceAuto, Key: "tok"}
+	ve := &fuzznexus.VarExtract{Name: "V", Source: fuzznexus.VarSourceAuto, Key: "tok"}
 	first := &flightResponse{body: []byte(`<input name="tok" value="f1">`), header: http.Header{}}
 	if v, err := r.extractByName(ve, first); err != nil || v != "f1" {
 		t.Fatalf("first: %q, %v", v, err)

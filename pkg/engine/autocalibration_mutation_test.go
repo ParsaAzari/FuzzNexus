@@ -4,7 +4,7 @@ import (
 	"errors"
 	"testing"
 
-	"github.com/ffuf/ffuf/v2/pkg/ffuf"
+	"github.com/parsaazari/fuzznexus/pkg/fuzznexus"
 )
 
 // stubRunner is a RunnerProvider whose calls fail. It is enough to drive
@@ -12,13 +12,13 @@ import (
 // Calibrate before the request is ever prepared.
 type stubRunner struct{}
 
-func (stubRunner) Prepare(map[string][]byte, *ffuf.Request) (ffuf.Request, error) {
-	return ffuf.Request{}, errors.New("stub")
+func (stubRunner) Prepare(map[string][]byte, *fuzznexus.Request) (fuzznexus.Request, error) {
+	return fuzznexus.Request{}, errors.New("stub")
 }
-func (stubRunner) Execute(*ffuf.Request) (ffuf.Response, error) {
-	return ffuf.Response{}, errors.New("stub")
+func (stubRunner) Execute(*fuzznexus.Request) (fuzznexus.Response, error) {
+	return fuzznexus.Response{}, errors.New("stub")
 }
-func (stubRunner) Dump(*ffuf.Request) ([]byte, error) { return nil, nil }
+func (stubRunner) Dump(*fuzznexus.Request) ([]byte, error) { return nil, nil }
 
 // TestCalibrate_DoesNotMutateInput locks the fix for an input-map aliasing bug.
 // SimpleRunner.Prepare sets req.Input = input (the same map), so resp.Request.Input
@@ -29,7 +29,7 @@ func (stubRunner) Dump(*ffuf.Request) ([]byte, error) { return nil, nil }
 // CalibrateForHost already does.
 func TestCalibrate_DoesNotMutateInput(t *testing.T) {
 	job := &Job{
-		Config: &ffuf.Config{
+		Config: &fuzznexus.Config{
 			Url:                    "http://localhost/FUZZ",
 			Method:                 "GET",
 			AutoCalibration:        true,

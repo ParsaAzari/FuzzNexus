@@ -5,18 +5,18 @@ import (
 	"sync"
 	"time"
 
-	"github.com/ffuf/ffuf/v2/pkg/ffuf"
+	"github.com/parsaazari/fuzznexus/pkg/fuzznexus"
 )
 
 type RateThrottle struct {
 	rateCounter    *ring.Ring
-	Config         *ffuf.Config
+	Config         *fuzznexus.Config
 	RateMutex      sync.Mutex
 	RateLimiter    *time.Ticker
 	lastAdjustment time.Time
 }
 
-func NewRateThrottle(conf *ffuf.Config) *RateThrottle {
+func NewRateThrottle(conf *fuzznexus.Config) *RateThrottle {
 	r := &RateThrottle{
 		Config:         conf,
 		lastAdjustment: time.Now(),

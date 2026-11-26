@@ -7,17 +7,17 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/ffuf/ffuf/v2/pkg/ffuf"
+	"github.com/parsaazari/fuzznexus/pkg/fuzznexus"
 )
 
 type LineFilter struct {
-	Value []ffuf.ValueRange
+	Value []fuzznexus.ValueRange
 }
 
-func NewLineFilter(value string) (ffuf.FilterProvider, error) {
-	var intranges []ffuf.ValueRange
+func NewLineFilter(value string) (fuzznexus.FilterProvider, error) {
+	var intranges []fuzznexus.ValueRange
 	for _, sv := range strings.Split(value, ",") {
-		vr, err := ffuf.ValueRangeFromString(sv)
+		vr, err := fuzznexus.ValueRangeFromString(sv)
 		if err != nil {
 			return &LineFilter{}, fmt.Errorf("Line filter or matcher (-fl / -ml): invalid value: %s", sv)
 		}
@@ -42,7 +42,7 @@ func (f *LineFilter) MarshalJSON() ([]byte, error) {
 	})
 }
 
-func (f *LineFilter) Filter(response *ffuf.Response) (bool, error) {
+func (f *LineFilter) Filter(response *fuzznexus.Response) (bool, error) {
 	// bytes.Count(...)+1 matches len(strings.Split(...)) for a single-byte
 	// separator without allocating a []string of the whole body. See runner.
 	linesSize := bytes.Count(response.Data, []byte("\n")) + 1

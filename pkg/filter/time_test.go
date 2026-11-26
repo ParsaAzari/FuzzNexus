@@ -4,7 +4,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/ffuf/ffuf/v2/pkg/ffuf"
+	"github.com/parsaazari/fuzznexus/pkg/fuzznexus"
 )
 
 func TestNewTimeFilter(t *testing.T) {
@@ -42,7 +42,7 @@ func TestTimeFiltering(t *testing.T) {
 		{99, false},
 		{2, false},
 	} {
-		resp := ffuf.Response{
+		resp := fuzznexus.Response{
 			Data:     []byte("dahhhhhtaaaaa"),
 			Duration: time.Duration(test.input * int64(time.Millisecond)),
 		}

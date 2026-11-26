@@ -7,17 +7,17 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/ffuf/ffuf/v2/pkg/ffuf"
+	"github.com/parsaazari/fuzznexus/pkg/fuzznexus"
 )
 
 type WordFilter struct {
-	Value []ffuf.ValueRange
+	Value []fuzznexus.ValueRange
 }
 
-func NewWordFilter(value string) (ffuf.FilterProvider, error) {
-	var intranges []ffuf.ValueRange
+func NewWordFilter(value string) (fuzznexus.FilterProvider, error) {
+	var intranges []fuzznexus.ValueRange
 	for _, sv := range strings.Split(value, ",") {
-		vr, err := ffuf.ValueRangeFromString(sv)
+		vr, err := fuzznexus.ValueRangeFromString(sv)
 		if err != nil {
 			return &WordFilter{}, fmt.Errorf("Word filter or matcher (-fw / -mw): invalid value: %s", sv)
 		}
@@ -42,7 +42,7 @@ func (f *WordFilter) MarshalJSON() ([]byte, error) {
 	})
 }
 
-func (f *WordFilter) Filter(response *ffuf.Response) (bool, error) {
+func (f *WordFilter) Filter(response *fuzznexus.Response) (bool, error) {
 	// bytes.Count(...)+1 matches len(strings.Split(...)) for a single-byte
 	// separator without allocating a []string of the whole body. See runner.
 	wordsSize := bytes.Count(response.Data, []byte(" ")) + 1

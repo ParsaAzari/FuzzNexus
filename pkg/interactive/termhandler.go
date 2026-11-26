@@ -6,8 +6,8 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/ffuf/ffuf/v2/pkg/engine"
-	"github.com/ffuf/ffuf/v2/pkg/ffuf"
+	"github.com/parsaazari/fuzznexus/pkg/engine"
+	"github.com/parsaazari/fuzznexus/pkg/fuzznexus"
 )
 
 type interactive struct {
@@ -213,8 +213,8 @@ func (i *interactive) handleInput(in []byte) {
 // filters against an already-collected result. ContentLines must come from the
 // result's line count, not its length: feeding ContentLength here made an
 // in-console "fl" (line count) filter match against the wrong number.
-func resultProbe(res ffuf.Result) *ffuf.Response {
-	return &ffuf.Response{
+func resultProbe(res fuzznexus.Result) *fuzznexus.Response {
+	return &fuzznexus.Response{
 		StatusCode:    res.StatusCode,
 		ContentLines:  res.ContentLines,
 		ContentWords:  res.ContentWords,
@@ -229,7 +229,7 @@ func (i *interactive) refreshResults() {
 	// refresh is not dropped (the previous GetCurrentResults/SetCurrentResults
 	// pair had a read-modify-write gap that lost it, and it double-counted a
 	// result once per filter it passed).
-	i.Job.Output.FilterCurrentResults(func(res ffuf.Result) bool {
+	i.Job.Output.FilterCurrentResults(func(res fuzznexus.Result) bool {
 		for _, filter := range filters {
 			filterOut, _ := filter.Filter(resultProbe(res))
 			if filterOut {

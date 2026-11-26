@@ -1,0 +1,9 @@
+[Desktop Entry]
+Name=FuzzNexus
+Comment=Professional Fast Web Fuzzer & Security Assessment Platform
+Exec=fuzznexus
+Icon=fuzznexus
+Terminal=false
+Type=Application
+Categories=Development;Security;Network;
+StartupWMClass=FuzzNexus

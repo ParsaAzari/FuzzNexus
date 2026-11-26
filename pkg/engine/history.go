@@ -11,15 +11,15 @@ import (
 	"strings"
 	"time"
 
-	"github.com/ffuf/ffuf/v2/pkg/ffuf"
+	"github.com/parsaazari/fuzznexus/pkg/fuzznexus"
 )
 
 type ConfigOptionsHistory struct {
-	ffuf.ConfigOptions
+	fuzznexus.ConfigOptions
 	Time time.Time `json:"time"`
 }
 
-func WriteHistoryEntry(conf *ffuf.Config) (string, error) {
+func WriteHistoryEntry(conf *fuzznexus.Config) (string, error) {
 	if conf.Options == nil {
 		return "", errors.New("cannot write history entry: config has no source options")
 	}
@@ -32,23 +32,23 @@ func WriteHistoryEntry(conf *ffuf.Config) (string, error) {
 		return "", err
 	}
 	hashstr := calculateHistoryHash(jsonoptions)
-	err = ffuf.CreateConfigDir(filepath.Join(ffuf.HISTORYDIR, hashstr))
+	err = fuzznexus.CreateConfigDir(filepath.Join(fuzznexus.HISTORYDIR, hashstr))
 	if err != nil {
 		return "", err
 	}
-	err = os.WriteFile(filepath.Join(ffuf.HISTORYDIR, hashstr, "options"), jsonoptions, 0640)
+	err = os.WriteFile(filepath.Join(fuzznexus.HISTORYDIR, hashstr, "options"), jsonoptions, 0640)
 	return hashstr, err
 }
 
 // historyOptions projects the Config's retained source options into the form
-// persisted for FFUFHASH history. Most fields ride the retained snapshot
+// persisted for FNHASH history. Most fields ride the retained snapshot
 // unchanged, but fields the engine mutates AFTER parsing must be refreshed from
 // the live Config — otherwise a `-search` reconstruction shows stale values:
 //   - HTTP.URL: recursion rewrites conf.Url per queued job (job.go prepareQueueJob),
 //     so the frozen snapshot would report the base URL, not the recursed path.
 //   - Filter/Matcher.*: autocalibration installs filters at runtime, absent from
 //     the raw input. Rebuilt from MatcherManager exactly as the old ToOptions did.
-func historyOptions(conf *ffuf.Config) ffuf.ConfigOptions {
+func historyOptions(conf *fuzznexus.Config) fuzznexus.ConfigOptions {
 	o := *conf.Options
 	o.HTTP.URL = conf.Url
 	if conf.MatcherManager != nil {
@@ -101,14 +101,14 @@ func calculateHistoryHash(options []byte) string {
 func SearchHash(hash string) ([]ConfigOptionsHistory, int, error) {
 	coptions := make([]ConfigOptionsHistory, 0)
 	if len(hash) < 6 {
-		return coptions, 0, errors.New("bad FFUFHASH value")
+		return coptions, 0, errors.New("bad FNHASH value")
 	}
 	historypart := hash[0:5]
 	position, err := strconv.ParseInt(hash[5:], 16, 32)
 	if err != nil {
-		return coptions, 0, errors.New("bad positional value in FFUFHASH")
+		return coptions, 0, errors.New("bad positional value in FNHASH")
 	}
-	all_dirs, err := os.ReadDir(ffuf.HISTORYDIR)
+	all_dirs, err := os.ReadDir(fuzznexus.HISTORYDIR)
 	if err != nil {
 		return coptions, 0, err
 	}
@@ -121,7 +121,7 @@ func SearchHash(hash string) ([]ConfigOptionsHistory, int, error) {
 		}
 	}
 	for _, dirname := range matched_dirs {
-		copts, err := configFromHistory(filepath.Join(ffuf.HISTORYDIR, dirname))
+		copts, err := configFromHistory(filepath.Join(fuzznexus.HISTORYDIR, dirname))
 		if err != nil {
 			continue
 		}
@@ -131,7 +131,7 @@ func SearchHash(hash string) ([]ConfigOptionsHistory, int, error) {
 	return coptions, int(position), err
 }
 
-func HistoryReplayable(conf *ffuf.Config) (bool, string) {
+func HistoryReplayable(conf *fuzznexus.Config) (bool, string) {
 	for _, w := range conf.Wordlists {
 		if w == "-" || strings.HasPrefix(w, "-:") {
 			return false, "stdin input was used for one of the wordlists"

@@ -15,9 +15,9 @@ import (
 	"sync"
 	"testing"
 
-	"github.com/ffuf/ffuf/v2/pkg/assembly"
-	"github.com/ffuf/ffuf/v2/pkg/ffuf"
-	"github.com/ffuf/ffuf/v2/pkg/filter"
+	"github.com/parsaazari/fuzznexus/pkg/assembly"
+	"github.com/parsaazari/fuzznexus/pkg/filter"
+	ffuf "github.com/parsaazari/fuzznexus/pkg/fuzznexus"
 )
 
 // TestMain points ffuf.SCRAPERDIR at an empty temp dir for the whole package.

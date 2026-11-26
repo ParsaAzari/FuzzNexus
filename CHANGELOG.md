@@ -1,5 +1,5 @@
 ## Changelog
-- master
+- Unreleased
   - New
     - Added `-preflight-var-auto` and `-postflight-var-auto`, which capture a value by name instead of by regex. `NAME:key` looks for `key` as a form field, a meta tag, a cookie in any `Set-Cookie` header, and a response header, in that order, and pins the first source it finds. `NAME:[form]key`, `[meta]`, `[cookie]` and `[header]` pick the source explicitly. Form values are HTML-entity decoded. A key present in two sources with different values is refused rather than guessed. Config files take the same as `source` and `key` on a var
   - Changed

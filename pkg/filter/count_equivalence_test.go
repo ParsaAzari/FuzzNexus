@@ -5,7 +5,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/ffuf/ffuf/v2/pkg/ffuf"
+	"github.com/parsaazari/fuzznexus/pkg/fuzznexus"
 )
 
 // The word/line counts are computed with bytes.Count(data, sep)+1 instead of
@@ -32,7 +32,7 @@ var countEquivalenceBodies = []string{
 func TestWordFilterCountMatchesSplit(t *testing.T) {
 	for _, body := range countEquivalenceBodies {
 		expected := len(strings.Split(body, " "))
-		resp := ffuf.Response{Data: []byte(body)}
+		resp := fuzznexus.Response{Data: []byte(body)}
 
 		hit, _ := NewWordFilter(strconv.Itoa(expected))
 		if match, _ := hit.Filter(&resp); !match {
@@ -48,7 +48,7 @@ func TestWordFilterCountMatchesSplit(t *testing.T) {
 func TestLineFilterCountMatchesSplit(t *testing.T) {
 	for _, body := range countEquivalenceBodies {
 		expected := len(strings.Split(body, "\n"))
-		resp := ffuf.Response{Data: []byte(body)}
+		resp := fuzznexus.Response{Data: []byte(body)}
 
 		hit, _ := NewLineFilter(strconv.Itoa(expected))
 		if match, _ := hit.Filter(&resp); !match {

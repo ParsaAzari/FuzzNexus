@@ -6,7 +6,7 @@ import (
 	"os"
 	"time"
 
-	"github.com/ffuf/ffuf/v2/pkg/ffuf"
+	"github.com/parsaazari/fuzznexus/pkg/fuzznexus"
 )
 
 type htmlResult struct {
@@ -44,7 +44,7 @@ const (
       name="viewport"
       content="width=device-width, initial-scale=1, maximum-scale=1.0"
     />
-    <title>FFUF Report - </title>
+    <title>FuzzNexus Report - </title>
 
     <!-- CSS  -->
     <link
@@ -66,7 +66,7 @@ const (
   <body>
     <nav>
       <div class="nav-wrapper">
-        <a href="#" class="brand-logo">FFUF</a>
+        <a href="#" class="brand-logo">FuzzNexus</a>
         <ul id="nav-mobile" class="right hide-on-med-and-down">
         </ul>
       </div>
@@ -75,16 +75,16 @@ const (
     <main class="section no-pad-bot" id="index-banner">
       <div class="container">
         <br /><br />
-        <h1 class="header center ">FFUF Report</h1>
+        <h1 class="header center ">FuzzNexus Report</h1>
         <div class="row center">
 
 		<pre>{{ .CommandLine }}</pre>
 		<pre>{{ .Time }}</pre>
 
-   <table id="ffufreport">
+   <table id="fuzznexusreport">
         <thead>
         <div style="display:none">
-|result_raw|StatusCode{{ range $keyword := .Keys }}|{{ $keyword | printf "%s" }}{{ end }}|Url|RedirectLocation|Position|ContentLength|ContentWords|ContentLines|ContentType|Duration|Resultfile|ScraperData|FfufHash|
+|result_raw|StatusCode{{ range $keyword := .Keys }}|{{ $keyword | printf "%s" }}{{ end }}|Url|RedirectLocation|Position|ContentLength|ContentWords|ContentLines|ContentType|Duration|Resultfile|ScraperData|FNHASH|
         </div>
           <tr>
               <th>Status</th>
@@ -99,7 +99,7 @@ const (
               <th>Duration</th>
 			  <th>Resultfile</th>
               <th>Scraper data</th>
-              <th>Ffuf Hash</th>
+              <th>FNHASH</th>
           </tr>
         </thead>
 
@@ -140,7 +140,7 @@ const (
     <script type="text/javascript" charset="utf8" src="https://cdn.datatables.net/1.10.20/js/jquery.dataTables.js"></script>
     <script>
     $(document).ready(function() {
-        $('#ffufreport').DataTable(
+        $('#fuzznexusreport').DataTable(
             {
                 "aLengthMenu": [
                     [250, 500, 1000, 2500, -1],
@@ -169,8 +169,8 @@ const (
 )
 
 // colorizeResults returns a new slice with HTMLColor attribute
-func colorizeResults(results []ffuf.Result) []ffuf.Result {
-	newResults := make([]ffuf.Result, 0)
+func colorizeResults(results []fuzznexus.Result) []fuzznexus.Result {
+	newResults := make([]fuzznexus.Result, 0)
 
 	for _, r := range results {
 		result := r
@@ -200,7 +200,7 @@ func colorizeResults(results []ffuf.Result) []ffuf.Result {
 	return newResults
 }
 
-func writeHTML(filename string, config *ffuf.Config, results []ffuf.Result) error {
+func writeHTML(filename string, config *fuzznexus.Config, results []fuzznexus.Result) error {
 	results = colorizeResults(results)
 
 	ti := time.Now()
@@ -215,7 +215,7 @@ func writeHTML(filename string, config *ffuf.Config, results []ffuf.Result) erro
 		ffufhash := ""
 		strinput := make(map[string]string)
 		for k, v := range r.Input {
-			if k == "FFUFHASH" {
+			if k == "FNHASH" {
 				ffufhash = string(v)
 			} else {
 				strinput[k] = string(v)

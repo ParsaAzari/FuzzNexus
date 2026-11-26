@@ -1,0 +1,83 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="100%" height="100%">
+  <defs>
+    <radialGradient id="lightProShadow" cx="50%" cy="50%" r="50%">
+      <stop offset="65%" stop-color="#000000" stop-opacity="0.14" />
+      <stop offset="85%" stop-color="#000000" stop-opacity="0.05" />
+      <stop offset="100%" stop-color="#000000" stop-opacity="0" />
+    </radialGradient>
+
+    <linearGradient id="smSquircle" x1="50%" y1="0%" x2="50%" y2="100%">
+      <stop offset="0%" stop-color="#fbfcfd" />
+      <stop offset="50%" stop-color="#f2f4f7" />
+      <stop offset="100%" stop-color="#e4e7eb" />
+    </linearGradient>
+
+    <linearGradient id="smSquircleRim" x1="50%" y1="0%" x2="50%" y2="100%">
+      <stop offset="0%" stop-color="#ffffff" stop-opacity="0.9" />
+      <stop offset="50%" stop-color="#cbd2d9" stop-opacity="0.6" />
+      <stop offset="100%" stop-color="#9aa2ad" stop-opacity="0.4" />
+    </linearGradient>
+
+    <linearGradient id="smHandle" x1="15%" y1="15%" x2="88%" y2="88%">
+      <stop offset="0%" stop-color="#2e3339" />
+      <stop offset="50%" stop-color="#4d535b" />
+      <stop offset="100%" stop-color="#788089" />
+    </linearGradient>
+
+    <linearGradient id="smLensBase" x1="20%" y1="10%" x2="80%" y2="90%">
+      <stop offset="0%" stop-color="#b8bec4" />
+      <stop offset="50%" stop-color="#8e959d" />
+      <stop offset="100%" stop-color="#a2a9b2" />
+    </linearGradient>
+
+    <linearGradient id="smDarkWave" x1="15%" y1="85%" x2="85%" y2="20%">
+      <stop offset="0%" stop-color="#2b2f34" />
+      <stop offset="50%" stop-color="#3e444b" />
+      <stop offset="100%" stop-color="#535a63" />
+    </linearGradient>
+
+    <linearGradient id="smGlassHighlight" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#ffffff" stop-opacity="0.35" />
+      <stop offset="100%" stop-color="#ffffff" stop-opacity="0" />
+    </linearGradient>
+
+    <linearGradient id="smGhost" x1="35%" y1="8%" x2="72%" y2="95%">
+      <stop offset="0%" stop-color="#ffffff" />
+      <stop offset="68%" stop-color="#f5f6f8" />
+      <stop offset="100%" stop-color="#e2e6eb" />
+    </linearGradient>
+
+    <linearGradient id="smGhostShadow" x1="0%" y1="35%" x2="100%" y2="55%">
+      <stop offset="0%" stop-color="#a6aeb8" />
+      <stop offset="60%" stop-color="#c5ccd5" />
+      <stop offset="100%" stop-color="#f3f4f6" stop-opacity="0" />
+    </linearGradient>
+
+    <clipPath id="smLensClip">
+      <circle cx="476" cy="466" r="244" />
+    </clipPath>
+  </defs>
+
+  <ellipse cx="512" cy="548" rx="444" ry="434" fill="url(#lightProShadow)" />
+
+  <g id="light-icon-container">
+    <path d="M 512 100 C 716 100, 796 100, 860 164 C 924 228, 924 308, 924 512 C 924 716, 924 796, 860 860 C 796 924, 716 924, 512 924 C 308 924, 228 924, 164 860 C 100 796, 100 716, 100 512 C 100 308, 100 228, 164 164 C 228 100, 308 100, 512 100 Z" fill="url(#smSquircle)" stroke="url(#smSquircleRim)" stroke-width="2.5" />
+  </g>
+
+  <g id="light-magnifier-handle" transform="translate(618, 608) rotate(45)">
+    <rect x="0" y="-44" width="234" height="88" rx="44" fill="url(#smHandle)" />
+  </g>
+
+  <g id="light-magnifier-lens" clip-path="url(#smLensClip)">
+    <circle cx="476" cy="466" r="244" fill="url(#smLensBase)" />
+    <path d="M 222 396 C 214 550, 304 676, 434 676 C 526 676, 580 598, 638 558 C 686 525, 722 538, 732 562 L 742 364 C 678 308, 582 284, 518 299 C 436 318, 402 436, 338 476 C 284 510, 240 450, 222 396 Z" fill="url(#smDarkWave)" />
+    <path d="M 476 222 A 244 244 0 0 0 256 574 C 246 474, 296 340, 476 222 Z" fill="url(#smGlassHighlight)" />
+  </g>
+
+  <g id="light-ghost-mark">
+    <path d="M 490 342 C 432 342, 406 382, 400 438 C 394 494, 384 530, 362 552 C 352 562, 356 579, 374 580 C 402 581, 419 554, 436 554 C 451 554, 451 575, 468 575 C 486 575, 495 554, 514 554 C 533 554, 539 573, 555 572 C 569 571, 574 553, 573 531 C 571 496, 569 456, 565 420 C 560 371, 532 342, 490 342 Z" fill="url(#smGhost)" />
+    <path d="M 471 343 C 425 348, 405 386, 400 438 C 394 494, 384 530, 362 552 C 352 562, 356 579, 374 580 C 398 581, 414 559, 430 555 C 423 536, 423 496, 429 442 C 434 393, 449 356, 471 343 Z" fill="url(#smGhostShadow)" />
+    <ellipse cx="487" cy="418" rx="14" ry="21.5" fill="#2e333a" />
+    <ellipse cx="533" cy="417" rx="14" ry="21.5" fill="#2e333a" />
+  </g>
+</svg>

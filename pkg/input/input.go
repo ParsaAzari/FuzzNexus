@@ -2,23 +2,23 @@ package input
 
 import (
 	"fmt"
-	"github.com/ffuf/ffuf/v2/pkg/ffuf"
+	"github.com/parsaazari/fuzznexus/pkg/fuzznexus"
 	"strings"
 
 	"github.com/ffuf/pencode/pkg/pencode"
 )
 
 type MainInputProvider struct {
-	Providers   []ffuf.InternalInputProvider
+	Providers   []fuzznexus.InternalInputProvider
 	Encoders    map[string]*pencode.Chain
-	Config      *ffuf.Config
+	Config      *fuzznexus.Config
 	position    int
 	msbIterator int
 }
 
-func NewInputProvider(conf *ffuf.Config) (ffuf.InputProvider, ffuf.Multierror) {
+func NewInputProvider(conf *fuzznexus.Config) (fuzznexus.InputProvider, fuzznexus.Multierror) {
 	validmode := false
-	errs := ffuf.NewMultierror()
+	errs := fuzznexus.NewMultierror()
 	for _, mode := range []string{"clusterbomb", "pitchfork", "sniper"} {
 		if conf.InputMode == mode {
 			validmode = true
@@ -39,7 +39,7 @@ func NewInputProvider(conf *ffuf.Config) (ffuf.InputProvider, ffuf.Multierror) {
 	return &mainip, errs
 }
 
-func (i *MainInputProvider) AddProvider(provider ffuf.InputProviderConfig) error {
+func (i *MainInputProvider) AddProvider(provider fuzznexus.InputProviderConfig) error {
 	if provider.Name == "command" {
 		newcomm, _ := NewCommandInput(provider.Keyword, provider.Value, i.Config)
 		i.Providers = append(i.Providers, newcomm)
@@ -65,7 +65,7 @@ func (i *MainInputProvider) AddProvider(provider ffuf.InputProviderConfig) error
 // ActivateKeywords enables / disables wordlists based on list of active keywords
 func (i *MainInputProvider) ActivateKeywords(kws []string) {
 	for _, p := range i.Providers {
-		if ffuf.StrInSlice(p.Keyword(), kws) {
+		if fuzznexus.StrInSlice(p.Keyword(), kws) {
 			p.Active()
 		} else {
 			p.Disable()
@@ -254,3 +254,7 @@ func (i *MainInputProvider) Total() int {
 	return count
 }
 
+// AvailableEncoders returns the sorted list of payload encoder names supported by pencode.
+func AvailableEncoders() []string {
+	return pencode.NewChain().GetEncoders()
+}

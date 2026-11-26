@@ -8,7 +8,7 @@ import (
 	"path/filepath"
 	"strconv"
 
-	"github.com/ffuf/ffuf/v2/pkg/ffuf"
+	"github.com/parsaazari/fuzznexus/pkg/fuzznexus"
 )
 
 func (j *Job) autoCalibrationStrings() map[string][]string {
@@ -24,13 +24,13 @@ func (j *Job) autoCalibrationStrings() map[string][]string {
 	}
 
 	for _, strategy := range j.Config.AutoCalibrationStrategies {
-		jsonStrategy, err := os.ReadFile(filepath.Join(ffuf.AUTOCALIBDIR, strategy+".json"))
+		jsonStrategy, err := os.ReadFile(filepath.Join(fuzznexus.AUTOCALIBDIR, strategy+".json"))
 		if err != nil {
 			j.Output.Warning(fmt.Sprintf("Skipping strategy \"%s\" because of error: %s\n", strategy, err))
 			continue
 		}
 
-		tmpStrategy := ffuf.AutocalibrationStrategy{}
+		tmpStrategy := fuzznexus.AutocalibrationStrategy{}
 		err = json.Unmarshal(jsonStrategy, &tmpStrategy)
 		if err != nil {
 			j.Output.Warning(fmt.Sprintf("Skipping strategy \"%s\" because of error: %s\n", strategy, err))
@@ -55,7 +55,7 @@ func mergeMaps(m1 map[string][]string, m2 map[string][]string) map[string][]stri
 			continue
 		}
 		for _, entry := range value {
-			if !ffuf.StrInSlice(entry, merged[key]) {
+			if !fuzznexus.StrInSlice(entry, merged[key]) {
 				merged[key] = append(merged[key], entry)
 			}
 		}
@@ -63,21 +63,21 @@ func mergeMaps(m1 map[string][]string, m2 map[string][]string) map[string][]stri
 	return merged
 }
 
-func (j *Job) calibrationRequest(inputs map[string][]byte) (ffuf.Response, error) {
-	basereq := ffuf.BaseRequest(j.Config)
+func (j *Job) calibrationRequest(inputs map[string][]byte) (fuzznexus.Response, error) {
+	basereq := fuzznexus.BaseRequest(j.Config)
 	req, err := j.Runner.Prepare(inputs, &basereq)
 	if err != nil {
 		j.Output.Error(fmt.Sprintf("Encountered an error while preparing autocalibration request: %s\n", err))
 		j.incError()
 		log.Printf("%s", err)
-		return ffuf.Response{}, err
+		return fuzznexus.Response{}, err
 	}
 	resp, err := j.Runner.Execute(&req)
 	if err != nil {
 		j.Output.Error(fmt.Sprintf("Encountered an error while executing autocalibration request: %s\n", err))
 		j.incError()
 		log.Printf("%s", err)
-		return ffuf.Response{}, err
+		return fuzznexus.Response{}, err
 	}
 	// Only calibrate on responses that would be matched otherwise
 	if j.isMatch(resp) {
@@ -100,7 +100,7 @@ func (j *Job) CalibrateForHost(host string, baseinput map[string][]byte) error {
 		input[k] = v
 	}
 	for _, v := range cStrings {
-		responses := make([]ffuf.Response, 0)
+		responses := make([]fuzznexus.Response, 0)
 		for _, cs := range v {
 			input[j.Config.AutoCalibrationKeyword] = []byte(cs)
 			resp, err := j.calibrationRequest(input)
@@ -136,7 +136,7 @@ func (j *Job) Calibrate(input map[string][]byte) error {
 	}
 
 	for _, v := range cInputs {
-		responses := make([]ffuf.Response, 0)
+		responses := make([]fuzznexus.Response, 0)
 		for _, cs := range v {
 			cinput[j.Config.AutoCalibrationKeyword] = []byte(cs)
 			resp, err := j.calibrationRequest(cinput)
@@ -166,7 +166,7 @@ func (j *Job) CalibrateIfNeeded(host string, input map[string][]byte) error {
 	return j.Calibrate(input)
 }
 
-func (j *Job) calibrateFilters(responses []ffuf.Response, perHost bool) error {
+func (j *Job) calibrateFilters(responses []fuzznexus.Response, perHost bool) error {
 	// Work down from the most specific common denominator
 	if len(responses) > 0 {
 		// Content length
@@ -180,14 +180,14 @@ func (j *Job) calibrateFilters(responses []ffuf.Response, perHost bool) error {
 		if sizeMatch {
 			if perHost {
 				// Check if already filtered
-				for _, f := range j.Config.MatcherManager.FiltersForDomain(ffuf.HostURLFromRequest(*responses[0].Request)) {
+				for _, f := range j.Config.MatcherManager.FiltersForDomain(fuzznexus.HostURLFromRequest(*responses[0].Request)) {
 					match, _ := f.Filter(&responses[0])
 					if match {
 						// Already filtered
 						return nil
 					}
 				}
-				_ = j.Config.MatcherManager.AddPerDomainFilter(ffuf.HostURLFromRequest(*responses[0].Request), "size", strconv.FormatInt(baselineSize, 10))
+				_ = j.Config.MatcherManager.AddPerDomainFilter(fuzznexus.HostURLFromRequest(*responses[0].Request), "size", strconv.FormatInt(baselineSize, 10))
 				return nil
 			} else {
 				// Check if already filtered
@@ -214,14 +214,14 @@ func (j *Job) calibrateFilters(responses []ffuf.Response, perHost bool) error {
 		if wordsMatch {
 			if perHost {
 				// Check if already filtered
-				for _, f := range j.Config.MatcherManager.FiltersForDomain(ffuf.HostURLFromRequest(*responses[0].Request)) {
+				for _, f := range j.Config.MatcherManager.FiltersForDomain(fuzznexus.HostURLFromRequest(*responses[0].Request)) {
 					match, _ := f.Filter(&responses[0])
 					if match {
 						// Already filtered
 						return nil
 					}
 				}
-				_ = j.Config.MatcherManager.AddPerDomainFilter(ffuf.HostURLFromRequest(*responses[0].Request), "word", strconv.FormatInt(baselineWords, 10))
+				_ = j.Config.MatcherManager.AddPerDomainFilter(fuzznexus.HostURLFromRequest(*responses[0].Request), "word", strconv.FormatInt(baselineWords, 10))
 				return nil
 			} else {
 				// Check if already filtered
@@ -248,14 +248,14 @@ func (j *Job) calibrateFilters(responses []ffuf.Response, perHost bool) error {
 		if linesMatch {
 			if perHost {
 				// Check if already filtered
-				for _, f := range j.Config.MatcherManager.FiltersForDomain(ffuf.HostURLFromRequest(*responses[0].Request)) {
+				for _, f := range j.Config.MatcherManager.FiltersForDomain(fuzznexus.HostURLFromRequest(*responses[0].Request)) {
 					match, _ := f.Filter(&responses[0])
 					if match {
 						// Already filtered
 						return nil
 					}
 				}
-				_ = j.Config.MatcherManager.AddPerDomainFilter(ffuf.HostURLFromRequest(*responses[0].Request), "line", strconv.FormatInt(baselineLines, 10))
+				_ = j.Config.MatcherManager.AddPerDomainFilter(fuzznexus.HostURLFromRequest(*responses[0].Request), "line", strconv.FormatInt(baselineLines, 10))
 				return nil
 			} else {
 				// Check if already filtered

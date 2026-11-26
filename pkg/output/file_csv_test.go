@@ -5,12 +5,12 @@ import (
 	"testing"
 	"time"
 
-	"github.com/ffuf/ffuf/v2/pkg/ffuf"
+	"github.com/parsaazari/fuzznexus/pkg/fuzznexus"
 )
 
 func TestToCSV(t *testing.T) {
-	result := ffuf.Result{
-		Input:            map[string][]byte{"x": {66}, "FFUFHASH": {65}},
+	result := fuzznexus.Result{
+		Input:            map[string][]byte{"x": {66}, "FNHASH": {65}},
 		Position:         1,
 		StatusCode:       200,
 		ContentLength:    3,

@@ -6,11 +6,11 @@ import (
 	"os/exec"
 	"strconv"
 
-	"github.com/ffuf/ffuf/v2/pkg/ffuf"
+	"github.com/parsaazari/fuzznexus/pkg/fuzznexus"
 )
 
 type CommandInput struct {
-	config  *ffuf.Config
+	config  *fuzznexus.Config
 	count   int
 	active  bool
 	keyword string
@@ -18,7 +18,7 @@ type CommandInput struct {
 	shell   string
 }
 
-func NewCommandInput(keyword string, value string, conf *ffuf.Config) (*CommandInput, error) {
+func NewCommandInput(keyword string, value string, conf *fuzznexus.Config) (*CommandInput, error) {
 	var cmd CommandInput
 	cmd.active = true
 	cmd.keyword = keyword

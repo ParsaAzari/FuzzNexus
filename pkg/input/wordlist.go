@@ -6,20 +6,20 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/ffuf/ffuf/v2/pkg/ffuf"
+	"github.com/parsaazari/fuzznexus/pkg/fuzznexus"
 )
 
 const maxWordlistLineSize = 512 * 1024
 
 type WordlistInput struct {
 	active   bool
-	config   *ffuf.Config
+	config   *fuzznexus.Config
 	data     [][]byte
 	position int
 	keyword  string
 }
 
-func NewWordlistInput(keyword string, value string, conf *ffuf.Config) (*WordlistInput, error) {
+func NewWordlistInput(keyword string, value string, conf *fuzznexus.Config) (*WordlistInput, error) {
 	var wl WordlistInput
 	wl.active = true
 	wl.keyword = keyword

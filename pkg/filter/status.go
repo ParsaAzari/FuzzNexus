@@ -6,22 +6,22 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/ffuf/ffuf/v2/pkg/ffuf"
+	"github.com/parsaazari/fuzznexus/pkg/fuzznexus"
 )
 
 const AllStatuses = 0
 
 type StatusFilter struct {
-	Value []ffuf.ValueRange
+	Value []fuzznexus.ValueRange
 }
 
-func NewStatusFilter(value string) (ffuf.FilterProvider, error) {
-	var intranges []ffuf.ValueRange
+func NewStatusFilter(value string) (fuzznexus.FilterProvider, error) {
+	var intranges []fuzznexus.ValueRange
 	for _, sv := range strings.Split(value, ",") {
 		if sv == "all" {
-			intranges = append(intranges, ffuf.ValueRange{Min: AllStatuses, Max: AllStatuses})
+			intranges = append(intranges, fuzznexus.ValueRange{Min: AllStatuses, Max: AllStatuses})
 		} else {
-			vr, err := ffuf.ValueRangeFromString(sv)
+			vr, err := fuzznexus.ValueRangeFromString(sv)
 			if err != nil {
 				return &StatusFilter{}, fmt.Errorf("Status filter or matcher (-fc / -mc): invalid value %s", sv)
 			}
@@ -51,7 +51,7 @@ func (f *StatusFilter) MarshalJSON() ([]byte, error) {
 	})
 }
 
-func (f *StatusFilter) Filter(response *ffuf.Response) (bool, error) {
+func (f *StatusFilter) Filter(response *fuzznexus.Response) (bool, error) {
 	for _, iv := range f.Value {
 		if iv.Min == AllStatuses && iv.Max == AllStatuses {
 			// Handle the "all" case

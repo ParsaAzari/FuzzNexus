@@ -1,4 +1,4 @@
-// Package assembly wires a ffuf.Job together from a Config: the input provider,
+// Package assembly wires a fuzznexus.Job together from a Config: the input provider,
 // runner(s), output provider, audit logger, and scraper. It exists as its own
 // package because it must import the provider packages (input/runner/output/
 // scraper), which themselves import pkg/ffuf - so this composition cannot live in
@@ -8,21 +8,21 @@
 package assembly
 
 import (
-	"github.com/ffuf/ffuf/v2/pkg/engine"
-	"github.com/ffuf/ffuf/v2/pkg/ffuf"
-	"github.com/ffuf/ffuf/v2/pkg/input"
-	"github.com/ffuf/ffuf/v2/pkg/output"
-	"github.com/ffuf/ffuf/v2/pkg/runner"
-	"github.com/ffuf/ffuf/v2/pkg/scraper"
+	"github.com/parsaazari/fuzznexus/pkg/engine"
+	"github.com/parsaazari/fuzznexus/pkg/fuzznexus"
+	"github.com/parsaazari/fuzznexus/pkg/input"
+	"github.com/parsaazari/fuzznexus/pkg/output"
+	"github.com/parsaazari/fuzznexus/pkg/runner"
+	"github.com/parsaazari/fuzznexus/pkg/scraper"
 )
 
 // BuildJob constructs and wires a Job from conf. It is the single source of truth
 // for how a Job is assembled. Matchers/filters are NOT installed here (they need
 // the CLI flag state); see filter.FromConfig and main.SetupFilters.
-func BuildJob(conf *ffuf.Config) (*engine.Job, error) {
+func BuildJob(conf *fuzznexus.Config) (*engine.Job, error) {
 	var err error
 	job := engine.NewJob(conf)
-	var errs ffuf.Multierror
+	var errs fuzznexus.Multierror
 
 	job.Input, errs = input.NewInputProvider(conf)
 
@@ -46,7 +46,7 @@ func BuildJob(conf *ffuf.Config) (*engine.Job, error) {
 		}
 	}
 
-	newscraper, scraperErr := scraper.FromDir(ffuf.SCRAPERDIR, conf.Scrapers)
+	newscraper, scraperErr := scraper.FromDir(fuzznexus.SCRAPERDIR, conf.Scrapers)
 	if scraperErr.ErrorOrNil() != nil {
 		errs.Add(scraperErr.ErrorOrNil())
 	}

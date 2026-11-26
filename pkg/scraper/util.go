@@ -3,7 +3,7 @@ package scraper
 import (
 	"strings"
 
-	"github.com/ffuf/ffuf/v2/pkg/ffuf"
+	"github.com/parsaazari/fuzznexus/pkg/fuzznexus"
 )
 
 func headerString(headers map[string][]string) string {
@@ -23,7 +23,7 @@ func headerString(headers map[string][]string) string {
 }
 
 func isActive(name string, activegroups []string) bool {
-	return ffuf.StrInSlice(strings.ToLower(strings.TrimSpace(name)), activegroups)
+	return fuzznexus.StrInSlice(strings.ToLower(strings.TrimSpace(name)), activegroups)
 }
 
 func parseActiveGroups(activestr string) []string {

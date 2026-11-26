@@ -6,17 +6,17 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/ffuf/ffuf/v2/pkg/ffuf"
+	"github.com/parsaazari/fuzznexus/pkg/fuzznexus"
 )
 
 type SizeFilter struct {
-	Value []ffuf.ValueRange
+	Value []fuzznexus.ValueRange
 }
 
-func NewSizeFilter(value string) (ffuf.FilterProvider, error) {
-	var intranges []ffuf.ValueRange
+func NewSizeFilter(value string) (fuzznexus.FilterProvider, error) {
+	var intranges []fuzznexus.ValueRange
 	for _, sv := range strings.Split(value, ",") {
-		vr, err := ffuf.ValueRangeFromString(sv)
+		vr, err := fuzznexus.ValueRangeFromString(sv)
 		if err != nil {
 			return &SizeFilter{}, fmt.Errorf("Size filter or matcher (-fs / -ms): invalid value: %s", sv)
 		}
@@ -42,7 +42,7 @@ func (f *SizeFilter) MarshalJSON() ([]byte, error) {
 	})
 }
 
-func (f *SizeFilter) Filter(response *ffuf.Response) (bool, error) {
+func (f *SizeFilter) Filter(response *fuzznexus.Response) (bool, error) {
 	for _, iv := range f.Value {
 		if iv.Min <= response.ContentLength && response.ContentLength <= iv.Max {
 			return true, nil

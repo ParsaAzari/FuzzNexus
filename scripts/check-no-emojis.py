@@ -19,7 +19,7 @@ DISALLOWED_PATTERN = re.compile(
     r"[\u2600-\u26ff\u2700-\u27bf\u25a0-\u25ff\u2190-\u21ff\U00010000-\U0010ffff]"
 )
 
-SRC_DIR = os.path.join(os.path.dirname(__file__), "..", "ffuf-desktop", "frontend", "src")
+SRC_DIR = os.path.join(os.path.dirname(__file__), "..", "fuzznexus-desktop", "frontend", "src")
 
 violations = []
 

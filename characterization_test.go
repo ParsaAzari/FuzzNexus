@@ -2,7 +2,7 @@ package main
 
 // Characterization ("golden master") harness for the CLI flag + config pipeline.
 //
-// It pins the CURRENT observable behavior of ffuf's option handling so the planned
+// It pins the CURRENT observable behavior of FuzzNexus's option handling so the planned
 // flag/config refactor can be developed against a safety net: any change to help
 // output, flag parsing, aliases, config-file precedence, or the resulting Config is
 // surfaced as a test failure.
@@ -28,7 +28,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/ffuf/ffuf/v2/pkg/ffuf"
+	"github.com/parsaazari/fuzznexus/pkg/fuzznexus"
 )
 
 var updateGolden = flag.Bool("update-golden", false, "regenerate .golden characterization files")
@@ -65,18 +65,18 @@ func compareGolden(t *testing.T, path, got string) {
 	}
 }
 
-var versionLine = regexp.MustCompile(`(?m)^Fuzz Faster U Fool - .*$`)
+var versionLine = regexp.MustCompile(`(?m)^FuzzNexus - Advanced Web Reconnaissance & Fuzzing Hub - .*$`)
 
-// TestCharacterization_HelpGolden pins the exact `ffuf -h` output (sections, order,
+// TestCharacterization_HelpGolden pins the exact `fuzznexus -h` output (sections, order,
 // flags, defaults, examples). The build-dependent version line is normalized out.
 func TestCharacterization_HelpGolden(t *testing.T) {
 	var out string
 	withCleanFlagState(nil, func() {
-		opts := ffuf.NewConfigOptions()
+		opts := fuzznexus.NewConfigOptions()
 		ParseFlags(opts) // registers every flag on the fresh FlagSet
 		out = captureStdout(Usage)
 	})
-	out = versionLine.ReplaceAllString(out, "Fuzz Faster U Fool - <VERSION>")
+	out = versionLine.ReplaceAllString(out, "FuzzNexus - Advanced Web Reconnaissance & Fuzzing Hub - <VERSION>")
 	compareGolden(t, "testdata/help.golden", out)
 }
 
@@ -138,7 +138,7 @@ func TestCharacterization_ConfigGolden(t *testing.T) {
 				ParseFlags(opts)
 				ctx, cancel := context.WithCancel(context.Background())
 				defer cancel()
-				conf, err := ffuf.ConfigFromOptions(opts, ctx, cancel)
+				conf, err := fuzznexus.ConfigFromOptions(opts, ctx, cancel)
 				snap = snapshotConfig(conf, err, cwd)
 				if err == nil && conf != nil {
 					_ = captureStdout(func() { _ = SetupFilters(opts, conf) }) // swallow warning prints
@@ -153,23 +153,23 @@ func TestCharacterization_ConfigGolden(t *testing.T) {
 	}
 }
 
-func loadOpts(t *testing.T, tomlBody string) *ffuf.ConfigOptions {
+func loadOpts(t *testing.T, tomlBody string) *fuzznexus.ConfigOptions {
 	t.Helper()
 	if tomlBody == "" {
-		return ffuf.NewConfigOptions()
+		return fuzznexus.NewConfigOptions()
 	}
-	f := filepath.Join(t.TempDir(), "ffufrc")
+	f := filepath.Join(t.TempDir(), "fuzznexusrc")
 	if err := os.WriteFile(f, []byte(tomlBody), 0644); err != nil {
 		t.Fatal(err)
 	}
-	opts, err := ffuf.ReadConfig(f)
+	opts, err := fuzznexus.ReadConfig(f)
 	if err != nil {
 		t.Fatalf("ReadConfig: %v", err)
 	}
 	return opts
 }
 
-func snapshotConfig(conf *ffuf.Config, err error, cwd string) string {
+func snapshotConfig(conf *fuzznexus.Config, err error, cwd string) string {
 	var b strings.Builder
 	if err != nil {
 		fmt.Fprintf(&b, "error: %s\n", err.Error())
@@ -187,12 +187,12 @@ func snapshotConfig(conf *ffuf.Config, err error, cwd string) string {
 	return b.String()
 }
 
-func matcherSnapshot(conf *ffuf.Config) string {
+func matcherSnapshot(conf *fuzznexus.Config) string {
 	if conf.MatcherManager == nil {
 		return "(no matcher manager)\n"
 	}
 	var b strings.Builder
-	dump := func(title string, providers map[string]ffuf.FilterProvider) {
+	dump := func(title string, providers map[string]fuzznexus.FilterProvider) {
 		reprs := make([]string, 0, len(providers))
 		for name, p := range providers {
 			reprs = append(reprs, fmt.Sprintf("  %s = %s", name, p.Repr()))

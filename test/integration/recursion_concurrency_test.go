@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/ffuf/ffuf/v2/pkg/ffuf"
-	"github.com/ffuf/ffuf/v2/pkg/testtarget"
+	ffuf "github.com/parsaazari/fuzznexus/pkg/fuzznexus"
+	"github.com/parsaazari/fuzznexus/pkg/testtarget"
 )
 
 // TestRecursionConcurrentQueue regresses C2: worker goroutines appended to the

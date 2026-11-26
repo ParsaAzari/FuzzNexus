@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"sync"
 
-	"github.com/ffuf/ffuf/v2/pkg/ffuf"
+	"github.com/parsaazari/fuzznexus/pkg/fuzznexus"
 )
 
 // MatcherManager handles both filters and matchers.
@@ -20,20 +20,20 @@ import (
 type MatcherManager struct {
 	mu               sync.RWMutex
 	IsCalibrated     bool
-	Matchers         map[string]ffuf.FilterProvider
-	Filters          map[string]ffuf.FilterProvider
+	Matchers         map[string]fuzznexus.FilterProvider
+	Filters          map[string]fuzznexus.FilterProvider
 	PerDomainFilters map[string]*PerDomainFilter
 }
 
 type PerDomainFilter struct {
 	IsCalibrated bool
-	Filters      map[string]ffuf.FilterProvider
+	Filters      map[string]fuzznexus.FilterProvider
 }
 
 // NewPerDomainFilter copies the supplied (global) filter map. Storing the map by
 // reference aliased the global Filters, so a per-domain filter write mutated the
 // global filter set and leaked into every host.
-func NewPerDomainFilter(globfilters map[string]ffuf.FilterProvider) *PerDomainFilter {
+func NewPerDomainFilter(globfilters map[string]fuzznexus.FilterProvider) *PerDomainFilter {
 	return &PerDomainFilter{IsCalibrated: false, Filters: copyFilterMap(globfilters)}
 }
 
@@ -43,19 +43,19 @@ func (p *PerDomainFilter) SetCalibrated(value bool) {
 
 // copyFilterMap returns a shallow copy of a filter map. The FilterProvider values
 // are safe to share: they are replaced, never mutated, after creation.
-func copyFilterMap(in map[string]ffuf.FilterProvider) map[string]ffuf.FilterProvider {
-	out := make(map[string]ffuf.FilterProvider, len(in))
+func copyFilterMap(in map[string]fuzznexus.FilterProvider) map[string]fuzznexus.FilterProvider {
+	out := make(map[string]fuzznexus.FilterProvider, len(in))
 	for k, v := range in {
 		out[k] = v
 	}
 	return out
 }
 
-func NewMatcherManager() ffuf.MatcherManager {
+func NewMatcherManager() fuzznexus.MatcherManager {
 	return &MatcherManager{
 		IsCalibrated:     false,
-		Matchers:         make(map[string]ffuf.FilterProvider),
-		Filters:          make(map[string]ffuf.FilterProvider),
+		Matchers:         make(map[string]fuzznexus.FilterProvider),
+		Filters:          make(map[string]fuzznexus.FilterProvider),
 		PerDomainFilters: make(map[string]*PerDomainFilter),
 	}
 }
@@ -78,7 +78,7 @@ func (f *MatcherManager) SetCalibratedForHost(host string, value bool) {
 	}
 }
 
-func NewFilterByName(name string, value string) (ffuf.FilterProvider, error) {
+func NewFilterByName(name string, value string) (fuzznexus.FilterProvider, error) {
 	if name == "status" {
 		return NewStatusFilter(value)
 	}
@@ -174,19 +174,19 @@ func (f *MatcherManager) AddMatcher(name string, option string) error {
 	return err
 }
 
-func (f *MatcherManager) GetFilters() map[string]ffuf.FilterProvider {
+func (f *MatcherManager) GetFilters() map[string]fuzznexus.FilterProvider {
 	f.mu.RLock()
 	defer f.mu.RUnlock()
 	return copyFilterMap(f.Filters)
 }
 
-func (f *MatcherManager) GetMatchers() map[string]ffuf.FilterProvider {
+func (f *MatcherManager) GetMatchers() map[string]fuzznexus.FilterProvider {
 	f.mu.RLock()
 	defer f.mu.RUnlock()
 	return copyFilterMap(f.Matchers)
 }
 
-func (f *MatcherManager) FiltersForDomain(domain string) map[string]ffuf.FilterProvider {
+func (f *MatcherManager) FiltersForDomain(domain string) map[string]fuzznexus.FilterProvider {
 	f.mu.RLock()
 	defer f.mu.RUnlock()
 	if f.PerDomainFilters[domain] == nil {
@@ -217,11 +217,11 @@ func (f *MatcherManager) Calibrated() bool {
 // are the and/or combination modes. GetFilters/GetMatchers/FiltersForDomain each
 // take the read lock and return a copy, so the ranges below never touch the live
 // maps.
-func (f *MatcherManager) Matches(resp *ffuf.Response, perHost bool, matcherMode string, filterMode string) bool {
+func (f *MatcherManager) Matches(resp *fuzznexus.Response, perHost bool, matcherMode string, filterMode string) bool {
 	matched := false
-	var filters map[string]ffuf.FilterProvider
+	var filters map[string]fuzznexus.FilterProvider
 	if perHost {
-		filters = f.FiltersForDomain(ffuf.HostURLFromRequest(*resp.Request))
+		filters = f.FiltersForDomain(fuzznexus.HostURLFromRequest(*resp.Request))
 	} else {
 		filters = f.GetFilters()
 	}

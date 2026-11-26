@@ -6,29 +6,29 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/ffuf/ffuf/v2/pkg/ffuf"
+	"github.com/parsaazari/fuzznexus/pkg/fuzznexus"
 )
 
 // NullOutput is a dummy output provider that does nothing
 type NullOutput struct {
-	Results []ffuf.Result
+	Results []fuzznexus.Result
 }
 
-func NewNullOutput() *NullOutput                              { return &NullOutput{} }
-func (o *NullOutput) Banner()                                 {}
-func (o *NullOutput) Finalize() error                         { return nil }
-func (o *NullOutput) Progress(status ffuf.Progress)           {}
-func (o *NullOutput) Info(infostring string)                  {}
-func (o *NullOutput) Error(errstring string)                  {}
-func (o *NullOutput) Raw(output string)                       {}
-func (o *NullOutput) Warning(warnstring string)               {}
-func (o *NullOutput) Result(resp ffuf.Response)               {}
-func (o *NullOutput) PrintResult(res ffuf.Result)             {}
-func (o *NullOutput) SaveFile(filename, format string) error  { return nil }
-func (o *NullOutput) GetCurrentResults() []ffuf.Result        { return o.Results }
-func (o *NullOutput) SetCurrentResults(results []ffuf.Result) { o.Results = results }
-func (o *NullOutput) FilterCurrentResults(keep func(ffuf.Result) bool) {
-	filtered := make([]ffuf.Result, 0, len(o.Results))
+func NewNullOutput() *NullOutput                                   { return &NullOutput{} }
+func (o *NullOutput) Banner()                                      {}
+func (o *NullOutput) Finalize() error                              { return nil }
+func (o *NullOutput) Progress(status fuzznexus.Progress)           {}
+func (o *NullOutput) Info(infostring string)                       {}
+func (o *NullOutput) Error(errstring string)                       {}
+func (o *NullOutput) Raw(output string)                            {}
+func (o *NullOutput) Warning(warnstring string)                    {}
+func (o *NullOutput) Result(resp fuzznexus.Response)               {}
+func (o *NullOutput) PrintResult(res fuzznexus.Result)             {}
+func (o *NullOutput) SaveFile(filename, format string) error       { return nil }
+func (o *NullOutput) GetCurrentResults() []fuzznexus.Result        { return o.Results }
+func (o *NullOutput) SetCurrentResults(results []fuzznexus.Result) { o.Results = results }
+func (o *NullOutput) FilterCurrentResults(keep func(fuzznexus.Result) bool) {
+	filtered := make([]fuzznexus.Result, 0, len(o.Results))
 	for _, r := range o.Results {
 		if keep(r) {
 			filtered = append(filtered, r)
@@ -44,14 +44,14 @@ func (o *NullOutput) Cycle()              {}
 func TestAutoCalibrationStrings(t *testing.T) {
 	// Create a temporary directory for the test
 	tmpDir, err := os.MkdirTemp("", "ffuf-test")
-	ffuf.AUTOCALIBDIR = tmpDir
+	fuzznexus.AUTOCALIBDIR = tmpDir
 	if err != nil {
 		t.Fatalf("Failed to create temporary directory: %v", err)
 	}
 	defer os.RemoveAll(tmpDir)
 
 	// Create a test strategy file
-	strategy := ffuf.AutocalibrationStrategy{
+	strategy := fuzznexus.AutocalibrationStrategy{
 		"test": {"foo", "bar"},
 	}
 	strategyJSON, err := json.Marshal(strategy)
@@ -66,7 +66,7 @@ func TestAutoCalibrationStrings(t *testing.T) {
 
 	// Create a test job with the strategy
 	job := &Job{
-		Config: &ffuf.Config{
+		Config: &fuzznexus.Config{
 			AutoCalibrationStrategies: []string{"test"},
 		},
 		Output: NewNullOutput(),
@@ -91,7 +91,7 @@ func TestAutoCalibrationStrings(t *testing.T) {
 
 	// Verify that a missing strategy is skipped
 	job = &Job{
-		Config: &ffuf.Config{
+		Config: &fuzznexus.Config{
 			AutoCalibrationStrategies: []string{"missing"},
 		},
 		Output: NewNullOutput(),
@@ -109,7 +109,7 @@ func TestAutoCalibrationStrings(t *testing.T) {
 		t.Fatalf("Failed to write malformed strategy file: %v", err)
 	}
 	job = &Job{
-		Config: &ffuf.Config{
+		Config: &fuzznexus.Config{
 			AutoCalibrationStrategies: []string{"malformed"},
 		},
 		Output: NewNullOutput(),

@@ -3,8 +3,8 @@ package integration
 import (
 	"testing"
 
-	"github.com/ffuf/ffuf/v2/pkg/ffuf"
-	"github.com/ffuf/ffuf/v2/pkg/testtarget"
+	ffuf "github.com/parsaazari/fuzznexus/pkg/fuzznexus"
+	"github.com/parsaazari/fuzznexus/pkg/testtarget"
 )
 
 // TestEncoderApplied checks that -enc transforms the payload before it is sent:

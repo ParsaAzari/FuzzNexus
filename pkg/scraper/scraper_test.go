@@ -4,19 +4,19 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/ffuf/ffuf/v2/pkg/ffuf"
+	"github.com/parsaazari/fuzznexus/pkg/fuzznexus"
 )
 
 // TestFromDir_UsesDirnameNotGlobal proves FromDir enumerates the directory it is
-// given rather than the package-global ffuf.SCRAPERDIR. Before the fix it read the
+// given rather than the package-global fuzznexus.SCRAPERDIR. Before the fix it read the
 // global for the directory listing while opening the entries relative to dirname,
 // so a valid dirname combined with a missing global still errored.
 func TestFromDir_UsesDirnameNotGlobal(t *testing.T) {
-	orig := ffuf.SCRAPERDIR
-	defer func() { ffuf.SCRAPERDIR = orig }()
+	orig := fuzznexus.SCRAPERDIR
+	defer func() { fuzznexus.SCRAPERDIR = orig }()
 
 	valid := t.TempDir() // exists, empty
-	ffuf.SCRAPERDIR = filepath.Join(t.TempDir(), "does-not-exist")
+	fuzznexus.SCRAPERDIR = filepath.Join(t.TempDir(), "does-not-exist")
 
 	_, errs := FromDir(valid, "all")
 	if errs.ErrorOrNil() != nil {

@@ -5,22 +5,22 @@ import (
 	"os"
 	"time"
 
-	"github.com/ffuf/ffuf/v2/pkg/ffuf"
+	"github.com/parsaazari/fuzznexus/pkg/fuzznexus"
 )
 
 const (
-	markdownTemplate = `# FFUF Report
+	markdownTemplate = `# FuzzNexus Report
 
   Command line : ` + "`{{.CommandLine}}`" + `
   Time: ` + "{{ .Time }}" + `
 
-  {{ range .Keys }}| {{ . }} {{ end }}| URL | Redirectlocation | Position | Status Code | Content Length | Content Words | Content Lines | Content Type | Duration | ResultFile | ScraperData | Ffufhash
+  {{ range .Keys }}| {{ . }} {{ end }}| URL | Redirectlocation | Position | Status Code | Content Length | Content Words | Content Lines | Content Type | Duration | ResultFile | ScraperData | FNHASH
   {{ range .Keys }}| :- {{ end }}| :-- | :--------------- | :---- | :------- | :---------- | :------------- | :------------ | :--------- | :----------- | :------------ | :-------- |
   {{range .Results}}{{ range $keyword, $value := .Input }}| {{ $value | printf "%s" }} {{ end }}| {{ .Url }} | {{ .RedirectLocation }} | {{ .Position }} | {{ .StatusCode }} | {{ .ContentLength }} | {{ .ContentWords }} | {{ .ContentLines }} | {{ .ContentType }} | {{ .Duration}} | {{ .ResultFile }} | {{ .ScraperData }} | {{ .FfufHash }}
   {{end}}` // The template format is not pretty but follows the markdown guide
 )
 
-func writeMarkdown(filename string, config *ffuf.Config, results []ffuf.Result) error {
+func writeMarkdown(filename string, config *fuzznexus.Config, results []fuzznexus.Result) error {
 	ti := time.Now()
 
 	keywords := make([]string, 0)
@@ -30,12 +30,12 @@ func writeMarkdown(filename string, config *ffuf.Config, results []ffuf.Result) 
 
 	htmlResults := make([]htmlResult, 0)
 
-	ffufhash := ""
 	for _, r := range results {
+		fuzzHash := ""
 		strinput := make(map[string]string)
 		for k, v := range r.Input {
-			if k == "FFUFHASH" {
-				ffufhash = string(v)
+			if k == "FNHASH" {
+				fuzzHash = string(v)
 			} else {
 				strinput[k] = string(v)
 			}
@@ -69,7 +69,7 @@ func writeMarkdown(filename string, config *ffuf.Config, results []ffuf.Result) 
 			ResultFile:       r.ResultFile,
 			Url:              r.Url,
 			Host:             r.Host,
-			FfufHash:         ffufhash,
+			FfufHash:         fuzzHash,
 		}
 		htmlResults = append(htmlResults, hres)
 	}

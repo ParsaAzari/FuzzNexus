@@ -8,7 +8,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/ffuf/ffuf/v2/pkg/ffuf"
+	"github.com/parsaazari/fuzznexus/pkg/fuzznexus"
 )
 
 // captureStdout redirects os.Stdout to an in-memory pipe for the duration of
@@ -59,13 +59,13 @@ func captureStream(t *testing.T, stream **os.File, fn func()) string {
 }
 
 func TestResultOutputOmitsControlCharsWhenStdoutIsNotATerminal(t *testing.T) {
-	conf := &ffuf.Config{}
+	conf := &fuzznexus.Config{}
 	outp := NewStdoutput(conf)
 	// A pipe (as used by captureStdout, and as ffuf sees when its stdout is
 	// redirected to a file with `>`) is never a terminal.
 	outp.stdoutIsTerminal = false
 
-	res := ffuf.Result{StatusCode: 200, ContentLength: 42, ContentWords: 3, ContentLines: 1}
+	res := fuzznexus.Result{StatusCode: 200, ContentLength: 42, ContentWords: 3, ContentLines: 1}
 
 	out := captureStdout(t, func() {
 		outp.PrintResult(res)
@@ -77,13 +77,13 @@ func TestResultOutputOmitsControlCharsWhenStdoutIsNotATerminal(t *testing.T) {
 }
 
 func TestResultOutputKeepsControlCharsOnATerminal(t *testing.T) {
-	conf := &ffuf.Config{}
+	conf := &fuzznexus.Config{}
 	outp := NewStdoutput(conf)
 	// Simulate stdout being an interactive terminal, which is when the
 	// progress-bar-clearing sequence is actually needed.
 	outp.stdoutIsTerminal = true
 
-	res := ffuf.Result{StatusCode: 200, ContentLength: 42, ContentWords: 3, ContentLines: 1}
+	res := fuzznexus.Result{StatusCode: 200, ContentLength: 42, ContentWords: 3, ContentLines: 1}
 
 	out := captureStdout(t, func() {
 		outp.PrintResult(res)
@@ -95,7 +95,7 @@ func TestResultOutputKeepsControlCharsOnATerminal(t *testing.T) {
 }
 
 func TestErrorOutputOmitsControlCharsWhenStderrIsNotATerminal(t *testing.T) {
-	conf := &ffuf.Config{}
+	conf := &fuzznexus.Config{}
 	outp := NewStdoutput(conf)
 	outp.stderrIsTerminal = false
 
@@ -109,7 +109,7 @@ func TestErrorOutputOmitsControlCharsWhenStderrIsNotATerminal(t *testing.T) {
 }
 
 func TestErrorOutputKeepsControlCharsOnATerminal(t *testing.T) {
-	conf := &ffuf.Config{}
+	conf := &fuzznexus.Config{}
 	outp := NewStdoutput(conf)
 	outp.stderrIsTerminal = true
 
@@ -123,12 +123,12 @@ func TestErrorOutputKeepsControlCharsOnATerminal(t *testing.T) {
 }
 
 func TestProgressOutputOmitsControlCharsWhenStderrIsNotATerminal(t *testing.T) {
-	conf := &ffuf.Config{}
+	conf := &fuzznexus.Config{}
 	outp := NewStdoutput(conf)
 	outp.stderrIsTerminal = false
 
 	out := captureStderr(t, func() {
-		outp.Progress(ffuf.Progress{StartedAt: time.Now()})
+		outp.Progress(fuzznexus.Progress{StartedAt: time.Now()})
 	})
 
 	if strings.Contains(out, TERMINAL_CLEAR_LINE) {
@@ -140,11 +140,11 @@ func TestResultOutputOmitsColorResetWhenColorsAreDisabled(t *testing.T) {
 	if ANSI_CLEAR == "" {
 		t.Skip("this build emits no ANSI escapes, so there is no reset code to look for")
 	}
-	conf := &ffuf.Config{Colors: false}
+	conf := &fuzznexus.Config{Colors: false}
 	outp := NewStdoutput(conf)
 	outp.stdoutIsTerminal = true // isolate this from the clear-line behavior above
 
-	res := ffuf.Result{StatusCode: 200, ContentLength: 42, ContentWords: 3, ContentLines: 1}
+	res := fuzznexus.Result{StatusCode: 200, ContentLength: 42, ContentWords: 3, ContentLines: 1}
 
 	out := captureStdout(t, func() {
 		outp.PrintResult(res)
@@ -159,11 +159,11 @@ func TestResultOutputKeepsColorResetWhenColorsAreEnabled(t *testing.T) {
 	if ANSI_CLEAR == "" {
 		t.Skip("this build emits no ANSI escapes, so there is no reset code to look for")
 	}
-	conf := &ffuf.Config{Colors: true}
+	conf := &fuzznexus.Config{Colors: true}
 	outp := NewStdoutput(conf)
 	outp.stdoutIsTerminal = false // -c output is opt-in and shouldn't depend on terminal detection
 
-	res := ffuf.Result{StatusCode: 200, ContentLength: 42, ContentWords: 3, ContentLines: 1}
+	res := fuzznexus.Result{StatusCode: 200, ContentLength: 42, ContentWords: 3, ContentLines: 1}
 
 	out := captureStdout(t, func() {
 		outp.PrintResult(res)

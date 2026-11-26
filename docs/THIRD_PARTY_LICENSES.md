@@ -1,6 +1,6 @@
 # Third-Party Open Source Licenses
 
-This document details the licensing information for fonts and third-party dependencies utilized by ffuf Desktop.
+This document details the licensing information for fonts and third-party dependencies utilized by FuzzNexus Desktop.
 
 ---
 
@@ -54,22 +54,7 @@ Copyright (c) 2016–present Rich Harris and Svelte contributors
 License: MIT License
 https://github.com/sveltejs/svelte
 
-### bits-ui
-Copyright (c) 2023–present Huntabyte
-License: MIT License
-https://github.com/huntabyte/bits-ui
-
 ### Lucide Icons (lucide-svelte / @lucide/svelte)
 Copyright (c) 2022 Lucide Contributors
 License: ISC License
 https://github.com/lucide-icons/lucide
-
-### uPlot
-Copyright (c) 2019–present Leon Sorokin
-License: MIT License
-https://github.com/leeoniya/uPlot
-
-### Tailwind CSS
-Copyright (c) Tailwind Labs, Inc.
-License: MIT License
-https://github.com/tailwindlabs/tailwindcss

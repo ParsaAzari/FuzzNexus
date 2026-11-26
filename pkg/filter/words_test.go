@@ -4,7 +4,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/ffuf/ffuf/v2/pkg/ffuf"
+	"github.com/parsaazari/fuzznexus/pkg/fuzznexus"
 )
 
 func TestNewWordFilter(t *testing.T) {
@@ -43,7 +43,7 @@ func TestWordFiltering(t *testing.T) {
 		for i := int64(0); i < test.input; i++ {
 			data = append(data, "A")
 		}
-		resp := ffuf.Response{Data: []byte(strings.Join(data, " "))}
+		resp := fuzznexus.Response{Data: []byte(strings.Join(data, " "))}
 		filterReturn, _ := f.Filter(&resp)
 		if filterReturn != test.output {
 			t.Errorf("Filter test %d: Was expecing filter return value of %t but got %t", i, test.output, filterReturn)

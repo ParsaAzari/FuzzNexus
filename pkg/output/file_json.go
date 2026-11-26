@@ -5,14 +5,14 @@ import (
 	"os"
 	"time"
 
-	"github.com/ffuf/ffuf/v2/pkg/ffuf"
+	"github.com/parsaazari/fuzznexus/pkg/fuzznexus"
 )
 
 type ejsonFileOutput struct {
-	CommandLine string        `json:"commandline"`
-	Time        string        `json:"time"`
-	Results     []ffuf.Result `json:"results"`
-	Config      *ffuf.Config  `json:"config"`
+	CommandLine string             `json:"commandline"`
+	Time        string             `json:"time"`
+	Results     []fuzznexus.Result `json:"results"`
+	Config      *fuzznexus.Config  `json:"config"`
 }
 
 type JsonResult struct {
@@ -32,13 +32,13 @@ type JsonResult struct {
 }
 
 type jsonFileOutput struct {
-	CommandLine string       `json:"commandline"`
-	Time        string       `json:"time"`
-	Results     []JsonResult `json:"results"`
-	Config      *ffuf.Config `json:"config"`
+	CommandLine string            `json:"commandline"`
+	Time        string            `json:"time"`
+	Results     []JsonResult      `json:"results"`
+	Config      *fuzznexus.Config `json:"config"`
 }
 
-func writeEJSON(filename string, config *ffuf.Config, res []ffuf.Result) error {
+func writeEJSON(filename string, config *fuzznexus.Config, res []fuzznexus.Result) error {
 	t := time.Now()
 	outJSON := ejsonFileOutput{
 		CommandLine: config.CommandLine,
@@ -57,7 +57,7 @@ func writeEJSON(filename string, config *ffuf.Config, res []ffuf.Result) error {
 	return nil
 }
 
-func writeJSON(filename string, config *ffuf.Config, res []ffuf.Result) error {
+func writeJSON(filename string, config *fuzznexus.Config, res []fuzznexus.Result) error {
 	t := time.Now()
 	jsonRes := make([]JsonResult, 0)
 	for _, r := range res {

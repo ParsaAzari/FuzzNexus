@@ -11,10 +11,10 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/ffuf/ffuf/v2/pkg/assembly"
-	"github.com/ffuf/ffuf/v2/pkg/ffuf"
-	"github.com/ffuf/ffuf/v2/pkg/filter"
-	"github.com/ffuf/ffuf/v2/pkg/testtarget"
+	"github.com/parsaazari/fuzznexus/pkg/assembly"
+	"github.com/parsaazari/fuzznexus/pkg/filter"
+	ffuf "github.com/parsaazari/fuzznexus/pkg/fuzznexus"
+	"github.com/parsaazari/fuzznexus/pkg/testtarget"
 )
 
 func indexOf(row []string, col string) int {

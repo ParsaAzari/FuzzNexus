@@ -20,7 +20,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/ffuf/ffuf/v2/pkg/testtarget"
+	"github.com/parsaazari/fuzznexus/pkg/testtarget"
 )
 
 // ffufBin is the binary built once for the whole package by TestMain.
@@ -173,21 +173,21 @@ func TestE2E_MatcherSuppressesDefault(t *testing.T) {
 	assertSet(t, matchedPayloads(out), []string{"keep"})
 }
 
-// hashFor returns the FFUFHASH of the result whose URL ends in the given payload.
+// hashFor returns the FNHASH of the result whose URL ends in the given payload.
 func hashFor(t *testing.T, stdout []byte, payload string) string {
 	t.Helper()
 	for _, r := range parseResults(stdout) {
 		if path.Base(r.Url) == payload {
-			if h := r.Input["FFUFHASH"]; len(h) > 0 {
+			if h := r.Input["FNHASH"]; len(h) > 0 {
 				return string(h)
 			}
 		}
 	}
-	t.Fatalf("no result for payload %q with a FFUFHASH in:\n%s", payload, stdout)
+	t.Fatalf("no result for payload %q with a FNHASH in:\n%s", payload, stdout)
 	return ""
 }
 
-// TestE2E_FFUFHashRoundTrip: take a FFUFHASH from a scan and feed it to -search,
+// TestE2E_FNHASHRoundTrip: take a FNHASH from a scan and feed it to -search,
 // asserting the original request is reconstructed. Exercises the retained-options
 // history serialization end to end. Config dir isolated via XDG_CONFIG_HOME.
 func TestE2E_FFUFHashRoundTrip(t *testing.T) {

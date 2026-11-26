@@ -8,7 +8,7 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/ffuf/ffuf/v2/pkg/ffuf"
+	"github.com/parsaazari/fuzznexus/pkg/fuzznexus"
 
 	"github.com/PuerkitoBio/goquery"
 )
@@ -43,13 +43,13 @@ func readGroupFromFile(filename string) (ScraperGroup, error) {
 	return sc, err
 }
 
-func FromDir(dirname string, activestr string) (ffuf.Scraper, ffuf.Multierror) {
+func FromDir(dirname string, activestr string) (fuzznexus.Scraper, fuzznexus.Multierror) {
 	scr := Scraper{Rules: make([]*ScraperRule, 0)}
-	errs := ffuf.NewMultierror()
+	errs := fuzznexus.NewMultierror()
 	activegrps := parseActiveGroups(activestr)
 	// Enumerate the directory that was passed in; the entries below are opened
 	// relative to dirname, so reading a different directory (the global
-	// ffuf.SCRAPERDIR) here would mismatch the two.
+	// fuzznexus.SCRAPERDIR) here would mismatch the two.
 	all_files, err := os.ReadDir(dirname)
 	if err != nil {
 		errs.Add(err)
@@ -97,8 +97,8 @@ func (s *Scraper) AppendFromFile(path string) error {
 	return err
 }
 
-func (s *Scraper) Execute(resp *ffuf.Response, matched bool) []ffuf.ScraperResult {
-	res := make([]ffuf.ScraperResult, 0)
+func (s *Scraper) Execute(resp *fuzznexus.Response, matched bool) []fuzznexus.ScraperResult {
+	res := make([]fuzznexus.ScraperResult, 0)
 	for _, rule := range s.Rules {
 		if !matched && rule.OnlyMatched {
 			// pass this rule as there was no match
@@ -114,7 +114,7 @@ func (s *Scraper) Execute(resp *ffuf.Response, matched bool) []ffuf.ScraperResul
 		}
 		val := rule.Check(sourceData)
 		if len(val) > 0 {
-			res = append(res, ffuf.ScraperResult{
+			res = append(res, fuzznexus.ScraperResult{
 				Name:    rule.Name,
 				Type:    rule.Type,
 				Action:  rule.Action,

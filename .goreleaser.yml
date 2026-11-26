@@ -1,14 +1,15 @@
 version: 2
+project_name: fuzznexus
 
 builds:
-  - id: ffuf
-    binary: ffuf
+  - id: fuzznexus
+    binary: fuzznexus
     flags:
       - -trimpath
     env:
       - CGO_ENABLED=0
     ldflags: >-
-      -s -w -X github.com/ffuf/ffuf/v2/pkg/ffuf.VERSION={{ .Version }} -X github.com/ffuf/ffuf/v2/pkg/ffuf.VERSION_APPENDIX= -extldflags '-static'
+      -s -w -X github.com/parsaazari/fuzznexus/pkg/fuzznexus.VERSION={{ .Version }} -X github.com/parsaazari/fuzznexus/pkg/fuzznexus.VERSION_APPENDIX= -extldflags '-static'
     goos:
       - linux
       - windows
@@ -31,8 +32,7 @@ builds:
 archives:
   - id: tgz
     formats: [tar.gz]
-    # v2 removed archive `replacements`; reproduce the darwin->macOS naming
-    # (e.g. ffuf_2.2.0_macOS_arm64.tar.gz, ffuf_2.2.0_linux_armv6.tar.gz) here.
+    # v2 removed archive `replacements`; keep the macOS name readable.
     name_template: >-
       {{ .ProjectName }}_{{ .Version }}_
       {{- if eq .Os "darwin" }}macOS{{ else }}{{ .Os }}{{ end }}_

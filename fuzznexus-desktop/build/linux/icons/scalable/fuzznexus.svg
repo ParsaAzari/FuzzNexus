@@ -1,0 +1,88 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="100%" height="100%">
+  <defs>
+    <radialGradient id="darkProShadow" cx="50%" cy="50%" r="50%">
+      <stop offset="65%" stop-color="#050507" stop-opacity="0.55" />
+      <stop offset="85%" stop-color="#050507" stop-opacity="0.22" />
+      <stop offset="100%" stop-color="#050507" stop-opacity="0" />
+    </radialGradient>
+
+    <linearGradient id="darkProBody" x1="50%" y1="0%" x2="50%" y2="100%">
+      <stop offset="0%" stop-color="#23252a" />
+      <stop offset="55%" stop-color="#18191d" />
+      <stop offset="100%" stop-color="#111215" />
+    </linearGradient>
+
+    <linearGradient id="darkProRim" x1="50%" y1="0%" x2="50%" y2="100%">
+      <stop offset="0%" stop-color="#ffffff" stop-opacity="0.28" />
+      <stop offset="55%" stop-color="#ffffff" stop-opacity="0.08" />
+      <stop offset="100%" stop-color="#000000" stop-opacity="0.6" />
+    </linearGradient>
+
+    <linearGradient id="darkHandle" x1="15%" y1="15%" x2="88%" y2="88%">
+      <stop offset="0%" stop-color="#2c3036" />
+      <stop offset="45%" stop-color="#4b515a" />
+      <stop offset="100%" stop-color="#7c838e" />
+    </linearGradient>
+
+    <linearGradient id="darkLensBase" x1="20%" y1="10%" x2="80%" y2="90%">
+      <stop offset="0%" stop-color="#8b929c" />
+      <stop offset="50%" stop-color="#4f555e" />
+      <stop offset="100%" stop-color="#727984" />
+    </linearGradient>
+
+    <linearGradient id="darkLensWave" x1="15%" y1="85%" x2="85%" y2="20%">
+      <stop offset="0%" stop-color="#1b1e22" />
+      <stop offset="55%" stop-color="#262a30" />
+      <stop offset="100%" stop-color="#363b43" />
+    </linearGradient>
+
+    <linearGradient id="darkGlassHighlight" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#ffffff" stop-opacity="0.22" />
+      <stop offset="100%" stop-color="#ffffff" stop-opacity="0" />
+    </linearGradient>
+
+    <linearGradient id="darkGhostBody" x1="35%" y1="8%" x2="72%" y2="95%">
+      <stop offset="0%" stop-color="#ffffff" />
+      <stop offset="68%" stop-color="#f3f4f6" />
+      <stop offset="100%" stop-color="#dde1e6" />
+    </linearGradient>
+
+    <linearGradient id="darkGhostShadow" x1="0%" y1="35%" x2="100%" y2="55%">
+      <stop offset="0%" stop-color="#9aa2ad" />
+      <stop offset="60%" stop-color="#bcc2ca" />
+      <stop offset="100%" stop-color="#f3f4f6" stop-opacity="0" />
+    </linearGradient>
+
+    <linearGradient id="darkGhostEye" x1="50%" y1="0%" x2="50%" y2="100%">
+      <stop offset="0%" stop-color="#181a1f" />
+      <stop offset="100%" stop-color="#484e57" />
+    </linearGradient>
+
+    <clipPath id="darkLensClip">
+      <circle cx="476" cy="466" r="244" />
+    </clipPath>
+  </defs>
+
+  <ellipse cx="512" cy="548" rx="444" ry="434" fill="url(#darkProShadow)" />
+
+  <g id="dark-icon-container">
+    <path d="M 512 100 C 716 100, 796 100, 860 164 C 924 228, 924 308, 924 512 C 924 716, 924 796, 860 860 C 796 924, 716 924, 512 924 C 308 924, 228 924, 164 860 C 100 796, 100 716, 100 512 C 100 308, 100 228, 164 164 C 228 100, 308 100, 512 100 Z" fill="url(#darkProBody)" stroke="url(#darkProRim)" stroke-width="2.5" />
+  </g>
+
+  <g id="dark-magnifier-handle" transform="translate(618, 608) rotate(45)">
+    <rect x="0" y="-44" width="234" height="88" rx="44" fill="url(#darkHandle)" />
+  </g>
+
+  <g id="dark-magnifier-lens" clip-path="url(#darkLensClip)">
+    <circle cx="476" cy="466" r="244" fill="url(#darkLensBase)" />
+    <path d="M 222 396 C 214 550, 304 676, 434 676 C 526 676, 580 598, 638 558 C 686 525, 722 538, 732 562 L 742 364 C 678 308, 582 284, 518 299 C 436 318, 402 436, 338 476 C 284 510, 240 450, 222 396 Z" fill="url(#darkLensWave)" />
+    <path d="M 476 222 A 244 244 0 0 0 256 574 C 246 474, 296 340, 476 222 Z" fill="url(#darkGlassHighlight)" />
+  </g>
+
+  <g id="dark-ghost-mark">
+    <path d="M 490 342 C 432 342, 406 382, 400 438 C 394 494, 384 530, 362 552 C 352 562, 356 579, 374 580 C 402 581, 419 554, 436 554 C 451 554, 451 575, 468 575 C 486 575, 495 554, 514 554 C 533 554, 539 573, 555 572 C 569 571, 574 553, 573 531 C 571 496, 569 456, 565 420 C 560 371, 532 342, 490 342 Z" fill="url(#darkGhostBody)" />
+    <path d="M 471 343 C 425 348, 405 386, 400 438 C 394 494, 384 530, 362 552 C 352 562, 356 579, 374 580 C 398 581, 414 559, 430 555 C 423 536, 423 496, 429 442 C 434 393, 449 356, 471 343 Z" fill="url(#darkGhostShadow)" />
+    <ellipse cx="487" cy="418" rx="14" ry="21.5" fill="url(#darkGhostEye)" />
+    <ellipse cx="533" cy="417" rx="14" ry="21.5" fill="url(#darkGhostEye)" />
+  </g>
+</svg>

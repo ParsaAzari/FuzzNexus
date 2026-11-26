@@ -8,7 +8,7 @@ import (
 	"sync/atomic"
 	"testing"
 
-	"github.com/ffuf/ffuf/v2/pkg/ffuf"
+	"github.com/parsaazari/fuzznexus/pkg/fuzznexus"
 )
 
 // TestHostPinBlocksHostChange is the fix for the host-hijack finding: a value
@@ -21,13 +21,13 @@ func TestHostPinBlocksHostChange(t *testing.T) {
 	defer srv.Close()
 	reqFile := writeTempRequest(t, fmt.Sprintf("GET / HTTP/1.1\nHost: %s\n\n", srv.Listener.Addr().String()))
 	conf := newTestConfig(srv.URL)
-	conf.Preflights = []ffuf.PreflightConfig{{
+	conf.Preflights = []fuzznexus.PreflightConfig{{
 		RequestFile: reqFile,
-		Vars:        []ffuf.VarExtract{{Name: "HOSTVAR", Regex: `host=([\w.]+)`}},
+		Vars:        []fuzznexus.VarExtract{{Name: "HOSTVAR", Regex: `host=([\w.]+)`}},
 	}}
 	r := newTestRunner(conf)
 
-	req := &ffuf.Request{Method: "GET", Url: "http://HOSTVAR/main", Headers: map[string]string{}}
+	req := &fuzznexus.Request{Method: "GET", Url: "http://HOSTVAR/main", Headers: map[string]string{}}
 	_, err := r.Execute(req)
 	if err == nil {
 		t.Fatal("expected Execute to refuse a host-changing preflight variable")
@@ -47,7 +47,7 @@ func TestSubstitutionDeterministic(t *testing.T) {
 	wantURL := "http://x/bbb?a=BBB" // TOKEN wins over TOK; AAA->BBB not rescanned to zzz
 	wantData := "v=aaa"
 	for i := 0; i < 50; i++ {
-		req := &ffuf.Request{Url: "http://x/TOKEN?a=AAA", Headers: map[string]string{"X": "TOK"}, Data: []byte("v=TOK")}
+		req := &fuzznexus.Request{Url: "http://x/TOKEN?a=AAA", Headers: map[string]string{"X": "TOK"}, Data: []byte("v=TOK")}
 		r.applyVars(req, vars)
 		if req.Url != wantURL {
 			t.Fatalf("run %d: url=%q want %q (nondeterministic or cascading)", i, req.Url, wantURL)
@@ -98,7 +98,7 @@ func TestPostflightRunsOnIgnoredBody(t *testing.T) {
 	postFile := writeTempRequest(t, fmt.Sprintf("GET /post HTTP/1.1\nHost: %s\n\n", srv.Listener.Addr().String()))
 	conf := newTestConfig(srv.URL)
 	conf.IgnoreBody = true
-	conf.Postflights = []ffuf.PreflightConfig{{RequestFile: postFile}}
+	conf.Postflights = []fuzznexus.PreflightConfig{{RequestFile: postFile}}
 	r := newTestRunner(conf)
 
 	if _, err := r.Execute(mainReq(srv.URL)); err != nil {
@@ -120,14 +120,14 @@ func TestPreflightRejectsControlCharValue(t *testing.T) {
 
 	confAbort := newTestConfig(srv.URL)
 	confAbort.PreflightError = "abort"
-	confAbort.Preflights = []ffuf.PreflightConfig{{RequestFile: reqFile, Vars: []ffuf.VarExtract{{Name: "T", Regex: `token=(.+)`}}}}
+	confAbort.Preflights = []fuzznexus.PreflightConfig{{RequestFile: reqFile, Vars: []fuzznexus.VarExtract{{Name: "T", Regex: `token=(.+)`}}}}
 	if _, err := newTestRunner(confAbort).runPreflightChain(confAbort.Preflights, nil); err == nil {
 		t.Error("abort mode: expected an error for a control-char value")
 	}
 
 	confIgnore := newTestConfig(srv.URL)
 	confIgnore.PreflightError = "ignore"
-	confIgnore.Preflights = []ffuf.PreflightConfig{{RequestFile: reqFile, Vars: []ffuf.VarExtract{{Name: "T", Regex: `token=(.+)`}}}}
+	confIgnore.Preflights = []fuzznexus.PreflightConfig{{RequestFile: reqFile, Vars: []fuzznexus.VarExtract{{Name: "T", Regex: `token=(.+)`}}}}
 	vars, err := newTestRunner(confIgnore).runPreflightChain(confIgnore.Preflights, nil)
 	if err != nil {
 		t.Fatalf("ignore mode should not error: %s", err)

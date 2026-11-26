@@ -6,7 +6,7 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/ffuf/ffuf/v2/pkg/ffuf"
+	"github.com/parsaazari/fuzznexus/pkg/fuzznexus"
 )
 
 type RegexpFilter struct {
@@ -14,7 +14,7 @@ type RegexpFilter struct {
 	valueRaw string
 }
 
-func NewRegexpFilter(value string) (ffuf.FilterProvider, error) {
+func NewRegexpFilter(value string) (fuzznexus.FilterProvider, error) {
 	re, err := regexp.Compile(value)
 	if err != nil {
 		return &RegexpFilter{}, fmt.Errorf("Regexp filter or matcher (-fr / -mr): invalid value: %s", value)
@@ -30,7 +30,7 @@ func (f *RegexpFilter) MarshalJSON() ([]byte, error) {
 	})
 }
 
-func (f *RegexpFilter) Filter(response *ffuf.Response) (bool, error) {
+func (f *RegexpFilter) Filter(response *fuzznexus.Response) (bool, error) {
 	matchheaders := ""
 	for k, v := range response.Headers {
 		for _, iv := range v {

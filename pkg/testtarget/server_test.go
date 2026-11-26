@@ -31,7 +31,7 @@ func TestBodyHelpers(t *testing.T) {
 }
 
 // TestEndpoints checks the gate/status behavior the integration suite relies on,
-// so a mock bug is caught here rather than misattributed to ffuf.
+// so a mock bug is caught here rather than misattributed to fuzznexus.
 func TestEndpoints(t *testing.T) {
 	tt := New()
 	defer tt.Close()

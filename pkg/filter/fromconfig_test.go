@@ -3,14 +3,14 @@ package filter
 import (
 	"testing"
 
-	"github.com/ffuf/ffuf/v2/pkg/ffuf"
+	"github.com/parsaazari/fuzznexus/pkg/fuzznexus"
 )
 
 // TestFromConfig_DefaultStatusMatcher covers the one behavior main used to drive
 // via flag.Visit: whether the default status matcher is installed. It is now
 // testable without the flag package.
 func TestFromConfig_DefaultStatusMatcher(t *testing.T) {
-	opts := ffuf.NewConfigOptions()
+	opts := fuzznexus.NewConfigOptions()
 
 	mm, err := FromConfig(opts, true)
 	if err != nil {
@@ -32,7 +32,7 @@ func TestFromConfig_DefaultStatusMatcher(t *testing.T) {
 // TestFromConfig_FiltersAndMatchers checks that configured filters/matchers are
 // installed from the ConfigOptions values.
 func TestFromConfig_FiltersAndMatchers(t *testing.T) {
-	opts := ffuf.NewConfigOptions()
+	opts := fuzznexus.NewConfigOptions()
 	opts.Filter.Size = "100"
 	opts.Matcher.Regexp = "admin"
 

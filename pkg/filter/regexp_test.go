@@ -4,7 +4,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/ffuf/ffuf/v2/pkg/ffuf"
+	"github.com/parsaazari/fuzznexus/pkg/fuzznexus"
 )
 
 func TestNewRegexpFilter(t *testing.T) {
@@ -36,9 +36,9 @@ func TestRegexpFiltering(t *testing.T) {
 		{"invalid", false},
 	} {
 		inp := make(map[string][]byte)
-		resp := ffuf.Response{
+		resp := fuzznexus.Response{
 			Data: []byte(test.input),
-			Request: &ffuf.Request{
+			Request: &fuzznexus.Request{
 				Input: inp,
 			},
 		}

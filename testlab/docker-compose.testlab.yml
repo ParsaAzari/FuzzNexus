@@ -1,0 +1,44 @@
+version: '3.8'
+
+services:
+  mock-target:
+    build:
+      context: ./mock-target
+      dockerfile: Dockerfile
+    container_name: testlab_mock_target
+    networks:
+      - testlab_net
+    expose:
+      - "9090"
+    restart: unless-stopped
+
+  waf-simulator:
+    build:
+      context: ./waf-simulator
+      dockerfile: Dockerfile
+    container_name: testlab_waf_simulator
+    cap_add:
+      - NET_ADMIN
+    ports:
+      - "8088:80"
+      - "8443:443"
+    depends_on:
+      - mock-target
+    networks:
+      - testlab_net
+    restart: unless-stopped
+
+  blocking-target:
+    build:
+      context: ./blocking-target
+      dockerfile: Dockerfile
+    container_name: testlab_blocking_target
+    ports:
+      - "8090:8090"
+    networks:
+      - testlab_net
+    restart: unless-stopped
+
+networks:
+  testlab_net:
+    driver: bridge

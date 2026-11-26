@@ -4,7 +4,7 @@ on:
     tags:
       - v*
     branches:
-      - master
+      - main
   pull_request:
 jobs:
   golangci:
@@ -20,7 +20,13 @@ jobs:
         with:
           # Pinned so a new golangci-lint release cannot change the gate on its own.
           # .golangci.yml keeps the v1 default linter set.
-          version: v2.13.2
+          version: v2.15.0
+      - name: golangci-lint (desktop)
+        uses: golangci/golangci-lint-action@v9
+        with:
+          working-directory: fuzznexus-desktop
+          version: v2.15.0
+          args: --config ../.golangci.yml
 
           # Optional: working directory, useful for monorepos
           # working-directory: somedir
