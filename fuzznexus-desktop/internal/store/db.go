@@ -255,7 +255,7 @@ func (s *Store) runMigrations() error {
 		if err != nil {
 			return err
 		}
-		defer tx.Rollback()
+		defer func() { _ = tx.Rollback() }()
 
 		schemaV5 := `
 		ALTER TABLE wordlists ADD COLUMN is_builtin INTEGER NOT NULL DEFAULT 0;
@@ -348,7 +348,7 @@ func (s *Store) InsertResults(sessionID int64, batch []output.ResultDTO) error {
 	if err != nil {
 		return err
 	}
-	defer tx.Rollback()
+	defer func() { _ = tx.Rollback() }()
 
 	stmt, err := tx.Prepare(`
 		INSERT INTO results (

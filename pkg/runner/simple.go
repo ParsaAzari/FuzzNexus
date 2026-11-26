@@ -29,6 +29,7 @@ import (
 
 	"github.com/andybalholm/brotli"
 	utls "github.com/refraction-networking/utls"
+	"golang.org/x/net/http2"
 	xproxy "golang.org/x/net/proxy"
 )
 
@@ -209,12 +210,11 @@ func NewSimpleRunner(conf *fuzznexus.Config, replay bool) fuzznexus.RunnerProvid
 			return dialUTLS(ctx, network, addr, true)
 		}
 
-		var h2Protocols http.Protocols
-		h2Protocols.SetHTTP2(true)
-		h2Transport := &http.Transport{
-			ForceAttemptHTTP2: true,
-			Protocols:         &h2Protocols,
-			DialTLSContext: func(ctx context.Context, network, addr string) (net.Conn, error) {
+		// x/net/http2.Transport is required here because uTLS owns the TLS
+		// handshake and HTTP/2 transport setup must preserve that fingerprint.
+		h2Transport := &http2.Transport{ //nolint:staticcheck // required for the custom uTLS handshake
+			AllowHTTP: false, //nolint:staticcheck // keep HTTPS-only behavior explicit
+			DialTLSContext: func(ctx context.Context, network, addr string, _ *tls.Config) (net.Conn, error) { //nolint:staticcheck // required by x/net/http2.Transport
 				uConn, err := dialUTLS(ctx, network, addr, false)
 				if err != nil {
 					return nil, err
@@ -250,7 +250,7 @@ func NewSimpleRunner(conf *fuzznexus.Config, replay bool) fuzznexus.RunnerProvid
 
 type utlsRoundTripper struct {
 	h1        *http.Transport
-	h2        *http.Transport
+	h2        *http2.Transport //nolint:staticcheck // required for the custom uTLS handshake
 	errNotH2  error
 	h1OnlyMap *sync.Map
 }
@@ -263,7 +263,7 @@ func (u *utlsRoundTripper) RoundTrip(req *http.Request) (*http.Response, error) 
 	if _, forceH1 := u.h1OnlyMap.Load(host); forceH1 {
 		return u.h1.RoundTrip(req)
 	}
-	resp, err := u.h2.RoundTrip(req)
+	resp, err := u.h2.RoundTrip(req) //nolint:staticcheck // required for the custom uTLS handshake
 	if err != nil && strings.Contains(err.Error(), u.errNotH2.Error()) {
 		u.h1OnlyMap.Store(host, true)
 		return u.h1.RoundTrip(req)
@@ -273,7 +273,7 @@ func (u *utlsRoundTripper) RoundTrip(req *http.Request) (*http.Response, error) 
 
 func (u *utlsRoundTripper) CloseIdleConnections() {
 	u.h1.CloseIdleConnections()
-	u.h2.CloseIdleConnections()
+	u.h2.CloseIdleConnections() //nolint:staticcheck // required for the custom uTLS handshake
 }
 
 func dialThroughProxy(ctx context.Context, dialer *net.Dialer, proxyU *url.URL, network, addr string) (net.Conn, error) {

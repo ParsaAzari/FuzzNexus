@@ -24,6 +24,12 @@ func SetChangeHook(fn func(isDark bool)) {
 	onChangeHook = fn
 }
 
+func changeHook() func(isDark bool) {
+	mu.Lock()
+	defer mu.Unlock()
+	return onChangeHook
+}
+
 // GetCurrentState returns the last recorded dark state.
 func GetCurrentState() bool {
 	mu.Lock()

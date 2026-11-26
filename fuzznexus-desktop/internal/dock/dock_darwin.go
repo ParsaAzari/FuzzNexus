@@ -116,9 +116,7 @@ import "unsafe"
 func onThemeChangedCallback(isDark C.int) {
 	dark := isDark != 0
 	SetDockTheme(dark)
-	mu.Lock()
-	hook := onChangeHook
-	mu.Unlock()
+	hook := changeHook()
 	if hook != nil {
 		hook(dark)
 	}
