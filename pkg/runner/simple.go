@@ -29,7 +29,6 @@ import (
 
 	"github.com/andybalholm/brotli"
 	utls "github.com/refraction-networking/utls"
-	"golang.org/x/net/http2"
 	xproxy "golang.org/x/net/proxy"
 )
 
@@ -210,9 +209,12 @@ func NewSimpleRunner(conf *fuzznexus.Config, replay bool) fuzznexus.RunnerProvid
 			return dialUTLS(ctx, network, addr, true)
 		}
 
-		h2Transport := &http2.Transport{
-			AllowHTTP: false,
-			DialTLSContext: func(ctx context.Context, network, addr string, _ *tls.Config) (net.Conn, error) {
+		var h2Protocols http.Protocols
+		h2Protocols.SetHTTP2(true)
+		h2Transport := &http.Transport{
+			ForceAttemptHTTP2: true,
+			Protocols:         &h2Protocols,
+			DialTLSContext: func(ctx context.Context, network, addr string) (net.Conn, error) {
 				uConn, err := dialUTLS(ctx, network, addr, false)
 				if err != nil {
 					return nil, err
@@ -248,7 +250,7 @@ func NewSimpleRunner(conf *fuzznexus.Config, replay bool) fuzznexus.RunnerProvid
 
 type utlsRoundTripper struct {
 	h1        *http.Transport
-	h2        *http2.Transport
+	h2        *http.Transport
 	errNotH2  error
 	h1OnlyMap *sync.Map
 }
