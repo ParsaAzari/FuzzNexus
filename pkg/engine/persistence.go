@@ -33,7 +33,7 @@ type ResumeState struct {
 	Timestamp        time.Time         `json:"timestamp"`
 }
 
-// GetDefaultResumeFilePath returns ~/.ffuf/resume_state.json.
+// GetDefaultResumeFilePath returns ~/.fuzznexus/resume_state.json.
 func GetDefaultResumeFilePath() string {
 	home, err := os.UserHomeDir()
 	if err != nil {

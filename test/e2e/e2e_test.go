@@ -1,4 +1,4 @@
-// Package e2e is the black-box layer: it builds the real ffuf binary and runs it
+// Package e2e is the black-box layer: it builds the real FuzzNexus binary and runs it
 // as a subprocess against the in-process mock target (reachable over real TCP),
 // then asserts on its output. This is the only layer that exercises argv -> flag
 // parsing -> engine -> formatted output end to end, which is where CLI/flag wiring
@@ -23,27 +23,27 @@ import (
 	"github.com/parsaazari/fuzznexus/pkg/testtarget"
 )
 
-// ffufBin is the binary built once for the whole package by TestMain.
-var ffufBin string
+// fuzzNexusBin is the binary built once for the whole package by TestMain.
+var fuzzNexusBin string
 
 func TestMain(m *testing.M) { os.Exit(runMain(m)) }
 
 func runMain(m *testing.M) int {
-	dir, err := os.MkdirTemp("", "ffuf-e2e")
+	dir, err := os.MkdirTemp("", "fuzznexus-e2e")
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		return 1
 	}
 	defer os.RemoveAll(dir)
 
-	ffufBin = filepath.Join(dir, "ffuf")
+	fuzzNexusBin = filepath.Join(dir, "fuzznexus")
 	if runtime.GOOS == "windows" {
-		ffufBin += ".exe"
+		fuzzNexusBin += ".exe"
 	}
-	build := exec.Command("go", "build", "-o", ffufBin, ".")
+	build := exec.Command("go", "build", "-o", fuzzNexusBin, ".")
 	build.Dir = "../.." // go test runs with cwd = this package's dir
 	if out, err := build.CombinedOutput(); err != nil {
-		fmt.Fprintf(os.Stderr, "go build ffuf failed: %v\n%s", err, out)
+		fmt.Fprintf(os.Stderr, "go build FuzzNexus failed: %v\n%s", err, out)
 		return 1
 	}
 	return m.Run()
@@ -55,16 +55,16 @@ func runFfuf(t *testing.T, env []string, args ...string) []byte {
 	t.Helper()
 	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
 	defer cancel()
-	cmd := exec.CommandContext(ctx, ffufBin, args...)
+	cmd := exec.CommandContext(ctx, fuzzNexusBin, args...)
 	if env != nil {
 		cmd.Env = env
 	}
 	out, err := cmd.Output()
 	if ctx.Err() == context.DeadlineExceeded {
-		t.Fatalf("ffuf timed out; args: %v", args)
+		t.Fatalf("FuzzNexus timed out; args: %v", args)
 	}
 	if err != nil {
-		t.Fatalf("ffuf failed: %v; args: %v", err, args)
+		t.Fatalf("FuzzNexus failed: %v; args: %v", err, args)
 	}
 	return out
 }
@@ -207,7 +207,7 @@ func TestE2E_FFUFHashRoundTrip(t *testing.T) {
 	// Hermeticity: on Linux XDG_CONFIG_HOME is honored, so the history must have
 	// been written under the temp dir. (Skipped on macOS where adrg/xdg ignores it.)
 	if runtime.GOOS == "linux" {
-		if _, err := os.Stat(filepath.Join(cfgHome, "ffuf", "history")); err != nil {
+		if _, err := os.Stat(filepath.Join(cfgHome, "fuzznexus", "history")); err != nil {
 			t.Errorf("history was not written under the isolated config dir: %v", err)
 		}
 	}
