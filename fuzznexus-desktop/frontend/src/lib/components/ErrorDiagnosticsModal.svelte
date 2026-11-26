@@ -96,7 +96,7 @@
                 </tr>
               </thead>
               <tbody>
-                {#each scanStore.recentErrors as err (err.index)}
+                {#each scanStore.recentErrors as err, i (`${err.index}-${i}`)}
                   <tr>
                     <td class="col-idx">{err.index}</td>
                     <td class="col-time">{new Date(err.timestamp).toLocaleTimeString()}</td>
@@ -143,7 +143,7 @@
     inset: 0;
     background-color: rgba(0, 0, 0, 0.65);
     backdrop-filter: blur(4px);
-    z-index: 10000;
+    z-index: 10050;
     display: flex;
     align-items: center;
     justify-content: center;

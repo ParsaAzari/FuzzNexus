@@ -464,3 +464,25 @@ func TestDeriveProbeTargets_SafetyRules(t *testing.T) {
 		t.Errorf("unexpected testlab targets: %+v", dockerTargets)
 	}
 }
+
+func TestSession_RecordErrorMonotonicRingBuffer(t *testing.T) {
+	sess := &Session{}
+	for i := 1; i <= 120; i++ {
+		sess.RecordError("network timeout")
+	}
+
+	errs := sess.GetRecentErrors()
+	if len(errs) != 100 {
+		t.Fatalf("expected 100 buffered errors, got %d", len(errs))
+	}
+	if errs[0].Index != 21 || errs[99].Index != 120 {
+		t.Fatalf("expected monotonic indices 21..120, got %d..%d", errs[0].Index, errs[99].Index)
+	}
+	seen := make(map[int]bool, len(errs))
+	for _, e := range errs {
+		if seen[e.Index] {
+			t.Fatalf("duplicate error index %d in ring buffer", e.Index)
+		}
+		seen[e.Index] = true
+	}
+}

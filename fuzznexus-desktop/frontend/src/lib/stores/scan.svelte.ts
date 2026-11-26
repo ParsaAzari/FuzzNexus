@@ -167,6 +167,7 @@ class ScanStore {
 
   recentErrors = $state<NetworkErrorDTO[]>([]);
   showErrorDiagnostics = $state<boolean>(false);
+  private nextErrorIndex = 0;
   circuitState = $state<string>('Closed');
   circuitReason = $state<string>('');
 
@@ -213,8 +214,9 @@ class ScanStore {
     });
 
     EventsOn('scan:error', (msg: string) => {
+      this.nextErrorIndex += 1;
       this.recentErrors.push({
-        index: this.recentErrors.length + 1,
+        index: this.nextErrorIndex,
         message: msg,
         timestamp: new Date().toISOString()
       });
@@ -640,10 +642,20 @@ class ScanStore {
       const errs = await GetRecentErrors();
       if (errs && Array.isArray(errs)) {
         this.recentErrors = errs;
+        for (const item of errs) {
+          if (item.index > this.nextErrorIndex) {
+            this.nextErrorIndex = item.index;
+          }
+        }
       }
     } catch (err: unknown) {
       console.warn('Failed to load recent scan errors:', err);
     }
+  }
+
+  openErrorDiagnostics() {
+    this.showErrorDiagnostics = true;
+    this.loadRecentErrors();
   }
 
   toggleErrorDiagnostics() {
@@ -677,6 +689,7 @@ class ScanStore {
     this.advisoryAlert = null;
     this.advisoryDismissed = false;
     this.recentErrors = [];
+    this.nextErrorIndex = 0;
     this.showErrorDiagnostics = false;
   }
 

@@ -132,6 +132,7 @@ type Session struct {
 	emitCircuitStateFn func(string, string)
 	errorsMu           sync.RWMutex
 	recentErrors       []NetworkErrorDTO
+	nextErrorIndex     int
 	jobDone            chan struct{}
 	safeStopWF         *engine.SafeStopWorkflow
 	blockHandled       bool
@@ -947,8 +948,9 @@ func (s *Session) RecordError(msg string) {
 	}
 	s.errorsMu.Lock()
 	defer s.errorsMu.Unlock()
+	s.nextErrorIndex++
 	entry := NetworkErrorDTO{
-		Index:     len(s.recentErrors) + 1,
+		Index:     s.nextErrorIndex,
 		Message:   msg,
 		Timestamp: time.Now().UTC(),
 	}

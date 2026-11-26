@@ -351,7 +351,7 @@
         type="button"
         class="netlog-btn font-mono"
         class:has-errors={scanStore.recentErrors.length > 0}
-        onclick={() => (scanStore.showErrorDiagnostics = true)}
+        onclick={() => scanStore.openErrorDiagnostics()}
         data-tooltip="View live network diagnostics & error log"
       >
         <Icon name="terminal" size={10} />

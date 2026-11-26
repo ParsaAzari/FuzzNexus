@@ -224,4 +224,26 @@ describe('ScanStore Dynamic Advisory & Passive Risk Actions', () => {
     );
     filtersStore.clearFilters();
   });
+
+  it('maintains strictly unique monotonic indices in recentErrors past the 100-entry ring buffer', async () => {
+    const errHandler = eventHandlers.get('scan:error');
+    expect(errHandler).toBeDefined();
+
+    for (let i = 1; i <= 115; i++) {
+      errHandler!(`dial tcp: timeout #${i}`);
+    }
+
+    expect(scanStore.recentErrors).toHaveLength(100);
+    const indices = scanStore.recentErrors.map((e) => e.index);
+    expect(indices[0]).toBe(16);
+    expect(indices[99]).toBe(115);
+    expect(new Set(indices).size).toBe(100);
+
+    scanStore.openErrorDiagnostics();
+    expect(scanStore.showErrorDiagnostics).toBe(true);
+    expect(appMocks.GetRecentErrors).toHaveBeenCalled();
+
+    scanStore.closeErrorDiagnostics();
+    expect(scanStore.showErrorDiagnostics).toBe(false);
+  });
 });
