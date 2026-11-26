@@ -12,23 +12,9 @@ var IconDarkPNG []byte
 var IconLightPNG []byte
 
 var (
-	mu           sync.Mutex
-	onChangeHook func(isDark bool)
-	currentDark  bool
+	mu          sync.Mutex
+	currentDark bool
 )
-
-// SetChangeHook registers a callback invoked when OS appearance changes.
-func SetChangeHook(fn func(isDark bool)) {
-	mu.Lock()
-	defer mu.Unlock()
-	onChangeHook = fn
-}
-
-func changeHook() func(isDark bool) {
-	mu.Lock()
-	defer mu.Unlock()
-	return onChangeHook
-}
 
 // GetCurrentState returns the last recorded dark state.
 func GetCurrentState() bool {

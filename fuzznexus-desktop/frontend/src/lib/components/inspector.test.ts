@@ -502,14 +502,14 @@ describe('Inspector & Footer Formatting Helpers', () => {
   });
 
   it('accurately highlights HTTP raw request lines, headers and body', () => {
-    const rawReq = 'GET /?internal=true HTTP/1.1\r\nHost: sabzlearn.ir\r\nUser-Agent: ffuf/2.1\r\n\r\n{"username":"admin"}';
+    const rawReq = 'GET /?internal=true HTTP/1.1\r\nHost: example.org\r\nUser-Agent: FuzzNexus/1.0\r\n\r\n{"username":"admin"}';
     const highlighted = highlightTokens(rawReq, 'http');
 
     // Method, Path, Protocol
     expect(highlighted).toContain('<span class="tok-tag">GET</span> <span class="tok-attr">/?internal=true</span> <span class="tok-doctype">HTTP/1.1</span>');
     // Headers
-    expect(highlighted).toContain('<span class="tok-prop">Host</span>: <span class="tok-val">sabzlearn.ir</span>');
-    expect(highlighted).toContain('<span class="tok-prop">User-Agent</span>: <span class="tok-val">ffuf/2.1</span>');
+    expect(highlighted).toContain('<span class="tok-prop">Host</span>: <span class="tok-val">example.org</span>');
+    expect(highlighted).toContain('<span class="tok-prop">User-Agent</span>: <span class="tok-val">FuzzNexus/1.0</span>');
     // Body formatted as JSON
     expect(highlighted).toContain('<span class="tok-key">&quot;username&quot;</span>:<span class="tok-str">&quot;admin&quot;</span>');
   });

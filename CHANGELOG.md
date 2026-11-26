@@ -1,4 +1,33 @@
-## Changelog
+# Changelog
+
+## [1.0.0] — 2026-11-26
+
+Initial public release of **FuzzNexus**, combining the shared Go fuzzing and reconnaissance engine with a cross-platform native desktop platform.
+
+### Highlights
+
+- **Cross-Platform Desktop Application (`fuzznexus-desktop`)**
+  - Built with Wails v2, Svelte 5, TypeScript, and SQLite (`modernc.org/sqlite`).
+  - Virtualized results grid with non-blocking `TX`/`RX` byte telemetry, real-time rate indicators, and live scan controls (Start, Pause, Resume, Safe-Stop).
+  - Dual-layer response filtering (live UI query builder + parameterized SQLite persistence) with undo/redo and saved filter presets.
+  - Built-in Request/Response Inspector with HTTP syntax highlighting, raw payload blob storage, and sandboxed preview.
+  - Integrated Wordlist Manager featuring 11 compressed curated packs, automated risk diagnostics, sanitization/deduplication, and virtual/raw editing.
+  - Native macOS adaptive dark/light dock integration, system theme detection, and cross-platform keyboard shortcuts.
+- **Shared Core Fuzzing & Reconnaissance Engine (`pkg/*`)**
+  - Multi-protocol HTTP/1.1 & HTTP/2 runner with selectable browser TLS profiles (`uTLS`), proxy/replay-proxy chaining, and client certificate (`mTLS`) support.
+  - Adaptive rate limiting, intelligent auto-calibration (`-ac` / `-acs` / `-ach`), soft-block/ban detection, and circuit-breaker safeguards.
+  - Preflight and postflight raw HTTP request pipelines with automatic and regex variable extraction (`-preflight-var-auto`, `-preflight-var`).
+  - Multi-wordlist clusterbomb, pitchfork, and sniper modes with in-flight encoders (`pencode`) and structured audit logging.
+- **Distribution & CI/CD**
+  - Automated multi-OS verification across macOS, Linux, and Windows (`go test -race`, `golangci-lint`, `svelte-check`, `vitest`, CodeQL).
+  - Universal release packaging: macOS Universal DMG (`arm64` + `x86_64`), Windows x64 ZIP, and Linux `x86_64` tarball.
+
+---
+
+## Upstream Core Engine History (ffuf)
+
+FuzzNexus incorporates and builds upon components derived from `ffuf`; upstream historical entries are retained below for reference and attribution.
+
 - Unreleased
   - New
     - Added `-preflight-var-auto` and `-postflight-var-auto`, which capture a value by name instead of by regex. `NAME:key` looks for `key` as a form field, a meta tag, a cookie in any `Set-Cookie` header, and a response header, in that order, and pins the first source it finds. `NAME:[form]key`, `[meta]`, `[cookie]` and `[header]` pick the source explicitly. Form values are HTML-entity decoded. A key present in two sources with different values is refused rather than guessed. Config files take the same as `source` and `key` on a var

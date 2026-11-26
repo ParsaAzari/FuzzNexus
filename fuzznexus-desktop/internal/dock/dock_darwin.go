@@ -112,6 +112,21 @@ static void NativeGeometricCenter(int width, int height) {
 import "C"
 import "unsafe"
 
+var onChangeHook func(isDark bool)
+
+// SetChangeHook registers a callback invoked when OS appearance changes.
+func SetChangeHook(fn func(isDark bool)) {
+	mu.Lock()
+	defer mu.Unlock()
+	onChangeHook = fn
+}
+
+func changeHook() func(isDark bool) {
+	mu.Lock()
+	defer mu.Unlock()
+	return onChangeHook
+}
+
 //export onThemeChangedCallback
 func onThemeChangedCallback(isDark C.int) {
 	dark := isDark != 0

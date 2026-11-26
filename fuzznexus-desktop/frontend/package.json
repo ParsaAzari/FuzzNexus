@@ -9,7 +9,7 @@
     "build": "vite build",
     "preview": "vite preview",
     "check": "svelte-check --tsconfig ./tsconfig.json",
-    "lint:emojis": "python3 ../../scripts/check-no-emojis.py",
+    "lint:emojis": "node ../../scripts/check-no-emojis.mjs",
     "test": "npm run lint:emojis && vitest run"
   },
   "devDependencies": {

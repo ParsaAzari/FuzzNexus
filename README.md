@@ -1,11 +1,5 @@
-# FuzzNexus
-
 <p align="center">
-  <picture>
-    <source media="(prefers-color-scheme: dark)" srcset="fuzznexus-desktop/frontend/src/assets/logo-dark.svg">
-    <source media="(prefers-color-scheme: light)" srcset="fuzznexus-desktop/frontend/src/assets/logo-light.svg">
-    <img src="fuzznexus-desktop/frontend/src/assets/logo-light.svg" alt="FuzzNexus logo" width="180">
-  </picture>
+  <img src="docs/banner.png" alt="FuzzNexus — High-speed web fuzzing and reconnaissance platform" width="100%">
 </p>
 
 <p align="center"><strong>Open-source web fuzzing and reconnaissance for the CLI and desktop.</strong></p>
