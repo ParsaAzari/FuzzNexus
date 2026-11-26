@@ -69,7 +69,7 @@
     <div class="brand-col">
       <div class="brand-header">
         <div class="product-title">FuzzNexus</div>
-        <span class="version-pill">v1.0.0</span>
+        <span class="version-pill">v1.0.1</span>
         <p class="tagline">Next-gen web fuzzing &amp; security reconnaissance.</p>
       </div>
 

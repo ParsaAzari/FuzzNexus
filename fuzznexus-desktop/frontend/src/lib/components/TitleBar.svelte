@@ -69,13 +69,13 @@
       type="button"
       class="app-branding"
       onclick={() => onOpenAbout?.()}
-      title="About FuzzNexus v1.0"
+      title="About FuzzNexus v1.0.1"
       aria-label="About FuzzNexus"
       style="--wails-draggable: no-drag;"
     >
       <Logo size={22} />
       <span class="app-title">FuzzNexus</span>
-      <span class="app-version">v1.0</span>
+      <span class="app-version">v1.0.1</span>
     </button>
     {#if scanStore.sessionID > 0}
       <div class="session-badge font-mono">
