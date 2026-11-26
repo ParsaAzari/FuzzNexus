@@ -9,6 +9,7 @@ import (
 	"net/http/httptest"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"sync/atomic"
 	"testing"
@@ -488,9 +489,13 @@ func TestE2E_AdvancedCLIFeaturesPart2(t *testing.T) {
 	}
 
 	// 7. Command Input (--input-cmd executes command per iteration with FFUF_NUM)
+	inputCmd := "printf cmd_hit"
+	if runtime.GOOS == "windows" {
+		inputCmd = "<nul set /p=cmd_hit"
+	}
 	sidCmd, err := svc.StartScan(ScanRequestDTO{
 		URL:           srv.URL + "/cmd/FUZZ",
-		InputCommands: []string{"printf cmd_hit"},
+		InputCommands: []string{inputCmd},
 		InputNum:      1,
 		MatcherStatus: "200",
 	})

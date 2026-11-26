@@ -21,6 +21,7 @@ import (
 	"path/filepath"
 	"reflect"
 	"sort"
+	"strconv"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -513,8 +514,8 @@ dirsearchcompat = true
 ignorewordlistcomments = true
 encoders = ["FUZZ:urlencode b64encode"]
 inputmode = "pitchfork"
-wordlists = ["%s:FUZZ"]
-`, mtlsSrv.URL, wl)
+wordlists = [%s]
+`, mtlsSrv.URL, strconv.Quote(wl+":FUZZ"))
 	if err := os.WriteFile(tomlFile, []byte(tomlData), 0600); err != nil {
 		t.Fatal(err)
 	}

@@ -2,6 +2,7 @@ package wordlists_test
 
 import (
 	"os"
+	"runtime"
 	"strings"
 	"testing"
 
@@ -10,8 +11,8 @@ import (
 
 func TestBuiltinSeedingAndIdempotency(t *testing.T) {
 	db, tempDir := setupTestDB(t)
-	defer db.Close()
 	defer os.RemoveAll(tempDir)
+	defer db.Close()
 
 	mgr, err := wordlists.NewManager(tempDir, db)
 	if err != nil {
@@ -62,11 +63,11 @@ func TestBuiltinSeedingAndIdempotency(t *testing.T) {
 		}
 		expectedCategories[b.Category] = true
 
-		// Check file mode 0600
+		// Check file mode 0600 on POSIX systems (Windows uses ACLs / synthetic 0666)
 		fi, err := os.Stat(b.Path)
 		if err != nil {
 			t.Errorf("file for %s not found on disk: %v", b.Name, err)
-		} else if fi.Mode().Perm() != 0600 {
+		} else if runtime.GOOS != "windows" && fi.Mode().Perm() != 0600 {
 			t.Errorf("expected file mode 0600, got %o for %s", fi.Mode().Perm(), b.Name)
 		}
 	}

@@ -7,6 +7,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"sync"
 	"testing"
@@ -61,8 +62,8 @@ func setupTestDB(t *testing.T) (*sql.DB, string) {
 
 func TestWordlistCRUD(t *testing.T) {
 	db, tempDir := setupTestDB(t)
-	defer db.Close()
 	defer os.RemoveAll(tempDir)
+	defer db.Close()
 
 	mgr, err := wordlists.NewManager(tempDir, db)
 	if err != nil {
@@ -79,12 +80,12 @@ func TestWordlistCRUD(t *testing.T) {
 		t.Fatalf("unexpected wordlist: %+v", wl)
 	}
 
-	// Check file mode 0600
+	// Check file mode 0600 on POSIX systems (Windows uses ACLs / synthetic 0666)
 	info, err := os.Stat(wl.Path)
 	if err != nil {
 		t.Fatalf("os.Stat failed: %v", err)
 	}
-	if info.Mode().Perm() != 0600 {
+	if runtime.GOOS != "windows" && info.Mode().Perm() != 0600 {
 		t.Fatalf("expected mode 0600, got %o", info.Mode().Perm())
 	}
 
