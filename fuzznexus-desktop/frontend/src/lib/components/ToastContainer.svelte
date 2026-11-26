@@ -45,7 +45,7 @@
     display: flex;
     flex-direction: column;
     gap: 8px;
-    z-index: 10001;
+    z-index: 10100;
     max-width: 380px;
     pointer-events: none;
   }

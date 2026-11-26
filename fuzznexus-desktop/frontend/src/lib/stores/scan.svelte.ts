@@ -18,6 +18,7 @@ import {
   DiscardPendingResumeState,
   ResumePendingScan
 } from '../../../wailsjs/go/main/App';
+import { toastStore } from './toast.svelte';
 import { EventsOn } from '../../../wailsjs/runtime/runtime';
 import { resultsStore } from './results.svelte';
 import { filtersStore } from './filters.svelte';
@@ -168,6 +169,7 @@ class ScanStore {
   recentErrors = $state<NetworkErrorDTO[]>([]);
   showErrorDiagnostics = $state<boolean>(false);
   private nextErrorIndex = 0;
+  private unreachableNotified = false;
   circuitState = $state<string>('Closed');
   circuitReason = $state<string>('');
 
@@ -222,6 +224,10 @@ class ScanStore {
       });
       if (this.recentErrors.length > 100) {
         this.recentErrors.shift();
+      }
+      if (!this.unreachableNotified && this.recentErrors.length >= 10 && this.reqCount === 0) {
+        this.unreachableNotified = true;
+        toastStore.warning('Target unreachable — check VPN, Proxy, or target host');
       }
     });
 
@@ -690,6 +696,7 @@ class ScanStore {
     this.advisoryDismissed = false;
     this.recentErrors = [];
     this.nextErrorIndex = 0;
+    this.unreachableNotified = false;
     this.showErrorDiagnostics = false;
   }
 

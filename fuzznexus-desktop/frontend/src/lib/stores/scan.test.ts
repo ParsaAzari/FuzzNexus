@@ -63,6 +63,7 @@ vi.mock('../../../wailsjs/go/main/App', () => appMocks);
 
 import { scanStore } from './scan.svelte';
 import { filtersStore } from './filters.svelte';
+import { toastStore } from './toast.svelte';
 
 describe('ScanStore Dynamic Advisory & Passive Risk Actions', () => {
   beforeEach(() => {
@@ -245,5 +246,20 @@ describe('ScanStore Dynamic Advisory & Passive Risk Actions', () => {
 
     scanStore.closeErrorDiagnostics();
     expect(scanStore.showErrorDiagnostics).toBe(false);
+  });
+
+  it('emits a single unreachable warning toast when >=10 network errors occur with zero responses', () => {
+    const warnSpy = vi.spyOn(toastStore, 'warning');
+    const errHandler = eventHandlers.get('scan:error');
+    expect(errHandler).toBeDefined();
+
+    scanStore.reqCount = 0;
+    for (let i = 1; i <= 12; i++) {
+      errHandler!(`dial tcp: connection refused #${i}`);
+    }
+
+    expect(warnSpy).toHaveBeenCalledTimes(1);
+    expect(warnSpy).toHaveBeenCalledWith('Target unreachable — check VPN, Proxy, or target host');
+    warnSpy.mockRestore();
   });
 });

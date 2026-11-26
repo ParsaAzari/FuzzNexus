@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.0.1] — 2026-11-26
+
+### Fixes & Improvements
+- **Network Error Diagnostics Modal:** Fixed duplicate ring-buffer index generation past 100 errors in both `Session.RecordError` and `ScanStore`, preventing Svelte 5 `each_key_duplicate` render crashes, and unified header/footer triggers with proper `z-index` layering.
+- **Target Unreachable Alert:** Added a non-blocking warning toast when 10+ consecutive network/transport errors occur with zero completed requests.
+- **Toast Layering:** Raised `ToastContainer` `z-index` to `10100` so notifications stay visible above all modals.
+- **Windows CI:** Hardened `Desktop CI` workflow and deterministic Windows test cleanup.
+
 ## [1.0.0] — 2026-11-26
 
 Initial public release of **FuzzNexus**, combining the shared Go fuzzing and reconnaissance engine with a cross-platform native desktop platform.
