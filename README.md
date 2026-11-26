@@ -28,6 +28,18 @@ wordlists, monitoring results, and inspecting requests and responses.
 - A desktop interface with persistent sessions, wordlist management, live
   results, filters, and request/response inspection
 
+## Download
+
+Prebuilt desktop binaries and SHA-256 checksums are published on the [GitHub Releases](https://github.com/ParsaAzari/FuzzNexus/releases/tag/v1.0.0) page:
+
+| Platform | Architecture | Download |
+|---|---|---|
+| [![macOS](https://img.shields.io/badge/macOS-Universal-000000?logo=apple&logoColor=white)](https://github.com/ParsaAzari/FuzzNexus/releases/download/v1.0.0/FuzzNexus-1.0.0-macOS-Universal.dmg) | Apple Silicon & Intel | [FuzzNexus-1.0.0-macOS-Universal.dmg](https://github.com/ParsaAzari/FuzzNexus/releases/download/v1.0.0/FuzzNexus-1.0.0-macOS-Universal.dmg) |
+| [![Windows](https://img.shields.io/badge/Windows-x64-0078D6?logo=windows&logoColor=white)](https://github.com/ParsaAzari/FuzzNexus/releases/download/v1.0.0/FuzzNexus-1.0.0-Windows-x64.zip) | 64-bit (`amd64`) | [FuzzNexus-1.0.0-Windows-x64.zip](https://github.com/ParsaAzari/FuzzNexus/releases/download/v1.0.0/FuzzNexus-1.0.0-Windows-x64.zip) |
+| [![Linux](https://img.shields.io/badge/Linux-x86__64-FCC624?logo=linux&logoColor=black)](https://github.com/ParsaAzari/FuzzNexus/releases/download/v1.0.0/FuzzNexus-1.0.0-Linux-x86_64.tar.gz) | 64-bit (`x86_64`) | [FuzzNexus-1.0.0-Linux-x86_64.tar.gz](https://github.com/ParsaAzari/FuzzNexus/releases/download/v1.0.0/FuzzNexus-1.0.0-Linux-x86_64.tar.gz) |
+
+Verify integrity with [FuzzNexus-1.0.0-SHA256SUMS.txt](https://github.com/ParsaAzari/FuzzNexus/releases/download/v1.0.0/FuzzNexus-1.0.0-SHA256SUMS.txt). For first-launch instructions, filtering tips, and CLI examples, see the [User Guide](docs/USER_GUIDE.md).
+
 ## Quick start
 
 ### CLI
@@ -157,7 +169,7 @@ in [SECURITY.md](SECURITY.md).
 ├── test/                  Integration and end-to-end tests
 ├── testlab/               Optional tagged WAF and network test lab
 ├── fuzznexus-desktop/     Wails backend and Svelte frontend
-├── docs/                  Architecture and third-party license notes
+├── docs/                  User guide, architecture, and third-party license notes
 └── scripts/               Build, packaging, and repository checks
 ```
 
