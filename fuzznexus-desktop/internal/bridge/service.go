@@ -385,6 +385,8 @@ func (s *Service) StartScan(req ScanRequestDTO) (int64, error) {
 		if state == scan.StateRunning || state == scan.StatePaused || state == scan.StateStopping {
 			return 0, errors.New("a scan session is already currently active")
 		}
+		// Ensure completed/stopped session teardown (logs/WAL close) completes before starting next scan
+		s.activeSession.Wait()
 	}
 
 	req.RequestFile = strings.TrimSpace(req.RequestFile)

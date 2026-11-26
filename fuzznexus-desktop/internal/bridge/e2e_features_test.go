@@ -14,6 +14,7 @@ import (
 	"sync/atomic"
 	"testing"
 	"time"
+	"unicode/utf16"
 
 	"github.com/parsaazari/fuzznexus/pkg/fuzznexus"
 )
@@ -491,7 +492,15 @@ func TestE2E_AdvancedCLIFeaturesPart2(t *testing.T) {
 	// 7. Command Input (--input-cmd executes command per iteration with FFUF_NUM)
 	inputCmd := "printf cmd_hit"
 	if runtime.GOOS == "windows" {
-		inputCmd = "set /p=cmd_hit<nul & exit 0"
+		// Encode PowerShell [Console]::Out.Write so cmd.exe /C avoids quote/pipe/set-p issues
+		// and writes raw stdout without trailing CRLF.
+		utf16CodeUnits := utf16.Encode([]rune("[Console]::Out.Write('cmd_hit')"))
+		rawUTF16 := make([]byte, len(utf16CodeUnits)*2)
+		for i, u := range utf16CodeUnits {
+			rawUTF16[i*2] = byte(u)
+			rawUTF16[i*2+1] = byte(u >> 8)
+		}
+		inputCmd = "powershell -NoProfile -NonInteractive -EncodedCommand " + base64.StdEncoding.EncodeToString(rawUTF16)
 	}
 	sidCmd, err := svc.StartScan(ScanRequestDTO{
 		URL:           srv.URL + "/cmd/FUZZ",
@@ -502,7 +511,7 @@ func TestE2E_AdvancedCLIFeaturesPart2(t *testing.T) {
 	if err != nil {
 		t.Fatalf("InputCommand StartScan failed: %v", err)
 	}
-	waitForBridgeSession(t, svc, sidCmd, 5*time.Second)
+	waitForBridgeSession(t, svc, sidCmd, 15*time.Second)
 	_ = svc.StopScan()
 	resCmd, _ := svc.GetResultsSince(sidCmd, 0, 10)
 	if len(resCmd.Results) != 1 || resCmd.Results[0].Inputs["FUZZ"] != "cmd_hit" {

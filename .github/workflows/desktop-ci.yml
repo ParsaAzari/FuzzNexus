@@ -11,6 +11,7 @@ jobs:
   build:
     name: Build & Test (${{ matrix.os }})
     runs-on: ${{ matrix.os }}
+    timeout-minutes: 25
     strategy:
       fail-fast: false
       matrix:
@@ -76,20 +77,21 @@ jobs:
             echo "Added Wails compatibility alias for webkit2gtk-4.0"
           fi
 
-      - name: Install Wails CLI
-        run: go install github.com/wailsapp/wails/v2/cmd/wails@latest
-
       - name: Core Engine Tests
+        shell: bash
+        timeout-minutes: 10
         env:
           CGO_ENABLED: "1"
-        run: go test -race -count=1 ./pkg/...
+        run: go test -race -count=1 -timeout=5m ./pkg/...
 
       - name: Install Frontend Dependencies
         working-directory: fuzznexus-desktop/frontend
+        shell: bash
         run: npm ci
 
       - name: Check Frontend (Typecheck, Test & Build)
         working-directory: fuzznexus-desktop/frontend
+        shell: bash
         run: |
           npm run check
           npm test
@@ -108,17 +110,67 @@ jobs:
           fi
           echo "Production CSP verified cleanly."
 
-      - name: Desktop Go Tests
+      - name: Desktop Go Vet
         working-directory: fuzznexus-desktop
+        shell: bash
+        timeout-minutes: 5
         env:
           CGO_ENABLED: "1"
+        run: go vet ./...
+
+      - name: Desktop Go Tests
+        working-directory: fuzznexus-desktop
+        shell: bash
+        timeout-minutes: 10
+        env:
+          CGO_ENABLED: "1"
+          CI: "true"
         run: |
-          go vet ./...
-          go test -race -count=1 -v ./...
+          set -o pipefail
+          LOG_FILE="${RUNNER_TEMP:-/tmp}/desktop-test.log"
+          status=0
+          go test -race -count=1 -timeout=5m ./... 2>&1 | tee "$LOG_FILE" || status=$?
+          if [ "$status" -ne 0 ]; then
+            grep -nE "^(--- FAIL:|FAIL[[:space:]]|panic:|WARNING: DATA RACE)" "$LOG_FILE" | while IFS= read -r line; do
+              echo "::error title=Desktop Go Test Failure::$line"
+            done
+          fi
+          exit "$status"
+
+      - name: Upload Desktop Test Log on Failure
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: desktop-test-log-${{ matrix.os }}
+          path: ${{ runner.temp }}/desktop-test.log
+          if-no-files-found: ignore
+
+      - name: Install Wails CLI
+        shell: bash
+        timeout-minutes: 5
+        run: go install github.com/wailsapp/wails/v2/cmd/wails@v2.17.1
 
       - name: Build Wails Desktop Application
         working-directory: fuzznexus-desktop
+        shell: bash
+        timeout-minutes: 10
         run: wails build
+
+      - name: Verify Built Desktop Binary
+        shell: bash
+        run: |
+          case "${{ runner.os }}" in
+            macOS)
+              test -d fuzznexus-desktop/build/bin/FuzzNexus.app || { echo "Missing FuzzNexus.app"; exit 1; }
+              ;;
+            Windows)
+              test -f fuzznexus-desktop/build/bin/FuzzNexus.exe || { echo "Missing FuzzNexus.exe"; exit 1; }
+              ;;
+            Linux)
+              test -f fuzznexus-desktop/build/bin/FuzzNexus || { echo "Missing FuzzNexus binary"; exit 1; }
+              ;;
+          esac
+          echo "Desktop binary verified for ${{ runner.os }}."
 
       - name: Upload Desktop Artifact (macOS)
         if: runner.os == 'macOS'
