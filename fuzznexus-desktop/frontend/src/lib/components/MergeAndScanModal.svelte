@@ -365,11 +365,13 @@
     position: fixed;
     inset: 0;
     background: rgba(0, 0, 0, 0.65);
-    backdrop-filter: blur(4px);
-    z-index: 9999;
+    backdrop-filter: blur(8px);
+    transform: translateZ(0);
+    z-index: 10050;
     display: flex;
-    align-items: center;
+    align-items: safe center;
     justify-content: center;
+    overflow-y: auto;
     padding: 16px;
     animation: fadeIn 0.15s ease-out;
   }
@@ -380,7 +382,8 @@
     border-radius: 10px;
     width: 100%;
     max-width: 680px;
-    max-height: 90vh;
+    max-height: calc(100vh - 32px);
+    margin: auto;
     display: flex;
     flex-direction: column;
     box-shadow: 0 16px 36px rgba(0, 0, 0, 0.45);
@@ -394,6 +397,7 @@
     padding: 14px 20px;
     border-bottom: 1px solid var(--border-color, #2f333d);
     background: var(--bg-surface-elevated, #242630);
+    flex-shrink: 0;
   }
 
   .header-title-wrap {
@@ -432,6 +436,8 @@
 
   .modal-body {
     padding: 16px 20px;
+    flex: 1;
+    min-height: 0;
     overflow-y: auto;
     display: flex;
     flex-direction: column;

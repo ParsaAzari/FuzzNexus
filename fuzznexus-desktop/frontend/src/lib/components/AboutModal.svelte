@@ -67,7 +67,7 @@
         <div class="about-titles" style="--wails-draggable: drag;">
           <div class="title-row" style="--wails-draggable: drag;">
             <h2 id="about-title" class="app-brand-name">FuzzNexus</h2>
-            <span class="version-badge font-mono">v1.0.1</span>
+            <span class="version-badge font-mono">v1.0.2</span>
           </div>
           <p class="app-tagline">
             High-Performance Autonomous Web Fuzzer & Security Engine
@@ -167,8 +167,9 @@
     inset: 0;
     z-index: 9999;
     background: rgba(0, 0, 0, 0.65);
-    backdrop-filter: blur(14px);
-    -webkit-backdrop-filter: blur(14px);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    transform: translateZ(0);
     display: flex;
     align-items: center;
     justify-content: center;

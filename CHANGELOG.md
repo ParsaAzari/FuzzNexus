@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.0.2] — 2026-11-27
+
+### Fixes & Improvements
+- **Windows Frameless Window & Custom Controls:** Enabled frameless window on Windows so the launcher and main titlebar render cleanly without the legacy OS titlebar frame, aligned header buttons to the right, and added native-styled Minimize / Maximize / Close controls.
+- **Full Process Shutdown & Scan Confirmation:** Disabled `HideWindowOnClose` on Windows and Linux for clean exit, and added a themed `ConfirmCloseModal` (`Keep Scanning` / `Stop & Quit`) when closing during an active scan across all platforms.
+- **Responsive Layout & Wordlists Sidebar:** Increased default Wordlists sidebar width to `344px`, refined responsive titlebar icon-only mode (`< 1160px`), fixed `MergeAndScanModal` top clipping on compact viewports, and stabilized Windows scrollbar thickness without hover reflow.
+- **GPU Compositing:** Tuned modal backdrop blur and layer promotion for smoother 60 FPS WebView2 rendering.
+
 ## [1.0.1] — 2026-11-26
 
 ### Fixes & Improvements

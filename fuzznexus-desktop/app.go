@@ -5,6 +5,7 @@ import (
 	"errors"
 	"log/slog"
 	"os"
+	"sync"
 
 	"fuzznexus-desktop/internal/blobs"
 	"fuzznexus-desktop/internal/bridge"
@@ -18,9 +19,11 @@ import (
 
 // App struct manages Wails lifecycle and delegates core actions to the bridge Service.
 type App struct {
-	ctx     context.Context
-	service *bridge.Service
-	logger  *slog.Logger
+	ctx       context.Context
+	service   *bridge.Service
+	logger    *slog.Logger
+	quitMu    sync.Mutex
+	forceQuit bool
 }
 
 // NewApp creates a new App application struct.
@@ -53,6 +56,31 @@ func (a *App) startup(ctx context.Context) {
 	})
 }
 
+func (a *App) beforeClose(ctx context.Context) (prevent bool) {
+	a.quitMu.Lock()
+	forced := a.forceQuit
+	a.quitMu.Unlock()
+	if forced {
+		return false
+	}
+
+	if a.service != nil && a.service.IsScanActive() {
+		runtime.EventsEmit(ctx, "app:confirm-close")
+		return true
+	}
+	return false
+}
+
+// ConfirmQuit stops any active scan during shutdown and forces the application to quit.
+func (a *App) ConfirmQuit() {
+	a.quitMu.Lock()
+	a.forceQuit = true
+	a.quitMu.Unlock()
+	if a.ctx != nil {
+		runtime.Quit(a.ctx)
+	}
+}
+
 func (a *App) shutdown(ctx context.Context) {
 	dock.Cleanup()
 	if a.service != nil {
@@ -68,7 +96,7 @@ func (a *App) SetAppDockTheme(isDark bool) {
 // FinishSplash transitions the window from launcher size (640x340) to the main application size (1200x760).
 func (a *App) FinishSplash() {
 	if a.ctx != nil {
-		runtime.WindowSetMinSize(a.ctx, 960, 580)
+		runtime.WindowSetMinSize(a.ctx, 1024, 620)
 		runtime.WindowSetSize(a.ctx, 1200, 760)
 		runtime.WindowCenter(a.ctx)
 		dock.GeometricCenter(1200, 760)

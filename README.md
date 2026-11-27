@@ -30,15 +30,15 @@ wordlists, monitoring results, and inspecting requests and responses.
 
 ## Download
 
-Prebuilt desktop binaries and SHA-256 checksums are published on the [GitHub Releases](https://github.com/ParsaAzari/FuzzNexus/releases/tag/v1.0.1) page:
+Prebuilt desktop binaries and SHA-256 checksums are published on the [GitHub Releases](https://github.com/ParsaAzari/FuzzNexus/releases/tag/v1.0.2) page:
 
 | Platform | Architecture | Download |
 |---|---|---|
-| [![macOS](https://img.shields.io/badge/macOS-Universal-000000?logo=apple&logoColor=white)](https://github.com/ParsaAzari/FuzzNexus/releases/download/v1.0.1/FuzzNexus-1.0.1-macOS-Universal.dmg) | Apple Silicon & Intel | [FuzzNexus-1.0.1-macOS-Universal.dmg](https://github.com/ParsaAzari/FuzzNexus/releases/download/v1.0.1/FuzzNexus-1.0.1-macOS-Universal.dmg) |
-| [![Windows](https://img.shields.io/badge/Windows-x64-0078D6?logo=windows&logoColor=white)](https://github.com/ParsaAzari/FuzzNexus/releases/download/v1.0.1/FuzzNexus-1.0.1-Windows-x64.zip) | 64-bit (`amd64`) | [FuzzNexus-1.0.1-Windows-x64.zip](https://github.com/ParsaAzari/FuzzNexus/releases/download/v1.0.1/FuzzNexus-1.0.1-Windows-x64.zip) |
-| [![Linux](https://img.shields.io/badge/Linux-x86__64-FCC624?logo=linux&logoColor=black)](https://github.com/ParsaAzari/FuzzNexus/releases/download/v1.0.1/FuzzNexus-1.0.1-Linux-x86_64.tar.gz) | 64-bit (`x86_64`) | [FuzzNexus-1.0.1-Linux-x86_64.tar.gz](https://github.com/ParsaAzari/FuzzNexus/releases/download/v1.0.1/FuzzNexus-1.0.1-Linux-x86_64.tar.gz) |
+| [![macOS](https://img.shields.io/badge/macOS-Universal-000000?logo=apple&logoColor=white)](https://github.com/ParsaAzari/FuzzNexus/releases/download/v1.0.2/FuzzNexus-1.0.2-macOS-Universal.dmg) | Apple Silicon & Intel | [FuzzNexus-1.0.2-macOS-Universal.dmg](https://github.com/ParsaAzari/FuzzNexus/releases/download/v1.0.2/FuzzNexus-1.0.2-macOS-Universal.dmg) |
+| [![Windows](https://img.shields.io/badge/Windows-x64-0078D6?logo=windows&logoColor=white)](https://github.com/ParsaAzari/FuzzNexus/releases/download/v1.0.2/FuzzNexus-1.0.2-Windows-x64.zip) | 64-bit (`amd64`) | [FuzzNexus-1.0.2-Windows-x64.zip](https://github.com/ParsaAzari/FuzzNexus/releases/download/v1.0.2/FuzzNexus-1.0.2-Windows-x64.zip) |
+| [![Linux](https://img.shields.io/badge/Linux-x86__64-FCC624?logo=linux&logoColor=black)](https://github.com/ParsaAzari/FuzzNexus/releases/download/v1.0.2/FuzzNexus-1.0.2-Linux-x86_64.tar.gz) | 64-bit (`x86_64`) | [FuzzNexus-1.0.2-Linux-x86_64.tar.gz](https://github.com/ParsaAzari/FuzzNexus/releases/download/v1.0.2/FuzzNexus-1.0.2-Linux-x86_64.tar.gz) |
 
-Verify integrity with [FuzzNexus-1.0.1-SHA256SUMS.txt](https://github.com/ParsaAzari/FuzzNexus/releases/download/v1.0.1/FuzzNexus-1.0.1-SHA256SUMS.txt). For first-launch instructions, filtering tips, and CLI examples, see the [User Guide](docs/USER_GUIDE.md).
+Verify integrity with [FuzzNexus-1.0.2-SHA256SUMS.txt](https://github.com/ParsaAzari/FuzzNexus/releases/download/v1.0.2/FuzzNexus-1.0.2-SHA256SUMS.txt). For first-launch instructions, filtering tips, and CLI examples, see the [User Guide](docs/USER_GUIDE.md).
 
 ## Quick start
 

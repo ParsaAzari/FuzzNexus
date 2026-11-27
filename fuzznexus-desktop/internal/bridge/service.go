@@ -1106,6 +1106,18 @@ func writeHTMLExport(f *os.File, sessionID int64, results []output.ResultDTO) er
 	return err
 }
 
+// IsScanActive reports whether a scan session is currently running or paused.
+func (s *Service) IsScanActive() bool {
+	s.sessionMu.Lock()
+	sess := s.activeSession
+	s.sessionMu.Unlock()
+	if sess == nil {
+		return false
+	}
+	st, _ := sess.State()
+	return st == scan.StateRunning || st == scan.StatePaused || st == scan.StateStopping
+}
+
 // Close gracefully terminates any running scan and releases store/blob resources.
 func (s *Service) Close() error {
 	s.sessionMu.Lock()

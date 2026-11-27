@@ -1,5 +1,5 @@
 export namespace blobs {
-
+	
 	export class PayloadDTO {
 	    session_id: number;
 	    result_id: number;
@@ -8,11 +8,11 @@ export namespace blobs {
 	    truncated: boolean;
 	    full_size_bytes: number;
 	    content_type: string;
-
+	
 	    static createFrom(source: any = {}) {
 	        return new PayloadDTO(source);
 	    }
-
+	
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.session_id = source["session_id"];
@@ -28,21 +28,21 @@ export namespace blobs {
 }
 
 export namespace bridge {
-
+	
 	export class FilteredResultsPageDTO {
 	    results: output.ResultDTO[];
 	    total_matches: number;
-
+	
 	    static createFrom(source: any = {}) {
 	        return new FilteredResultsPageDTO(source);
 	    }
-
+	
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.results = this.convertValues(source["results"], output.ResultDTO);
 	        this.total_matches = source["total_matches"];
 	    }
-
+	
 		convertValues(a: any, classs: any, asMap: boolean = false): any {
 		    if (!a) {
 		        return a;
@@ -66,11 +66,11 @@ export namespace bridge {
 	    url: string;
 	    headers: Record<string, string>;
 	    data: string;
-
+	
 	    static createFrom(source: any = {}) {
 	        return new ParsedRawHTTPRequestDTO(source);
 	    }
-
+	
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.method = source["method"];
@@ -90,11 +90,11 @@ export namespace bridge {
 	    ip_hash: string;
 	    // Go type: time
 	    timestamp: any;
-
+	
 	    static createFrom(source: any = {}) {
 	        return new PendingResumeDTO(source);
 	    }
-
+	
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.session_id = source["session_id"];
@@ -107,7 +107,7 @@ export namespace bridge {
 	        this.ip_hash = source["ip_hash"];
 	        this.timestamp = this.convertValues(source["timestamp"], null);
 	    }
-
+	
 		convertValues(a: any, classs: any, asMap: boolean = false): any {
 		    if (!a) {
 		        return a;
@@ -130,18 +130,18 @@ export namespace bridge {
 	    results: output.ResultDTO[];
 	    has_more: boolean;
 	    last_id: number;
-
+	
 	    static createFrom(source: any = {}) {
 	        return new ResultsPageDTO(source);
 	    }
-
+	
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.results = this.convertValues(source["results"], output.ResultDTO);
 	        this.has_more = source["has_more"];
 	        this.last_id = source["last_id"];
 	    }
-
+	
 		convertValues(a: any, classs: any, asMap: boolean = false): any {
 		    if (!a) {
 		        return a;
@@ -235,11 +235,11 @@ export namespace bridge {
 	    preflight_mode?: string;
 	    preflight_error?: string;
 	    preflight_anyhost?: boolean;
-
+	
 	    static createFrom(source: any = {}) {
 	        return new ScanRequestDTO(source);
 	    }
-
+	
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.url = source["url"];
@@ -317,7 +317,7 @@ export namespace bridge {
 	        this.preflight_error = source["preflight_error"];
 	        this.preflight_anyhost = source["preflight_anyhost"];
 	    }
-
+	
 		convertValues(a: any, classs: any, asMap: boolean = false): any {
 		    if (!a) {
 		        return a;
@@ -340,17 +340,17 @@ export namespace bridge {
 }
 
 export namespace fuzznexus {
-
+	
 	export class VarExtract {
 	    name: string;
 	    regex: string;
 	    source?: string;
 	    key?: string;
-
+	
 	    static createFrom(source: any = {}) {
 	        return new VarExtract(source);
 	    }
-
+	
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.name = source["name"];
@@ -362,17 +362,17 @@ export namespace fuzznexus {
 	export class PreflightConfig {
 	    request_file: string;
 	    vars: VarExtract[];
-
+	
 	    static createFrom(source: any = {}) {
 	        return new PreflightConfig(source);
 	    }
-
+	
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.request_file = source["request_file"];
 	        this.vars = this.convertValues(source["vars"], VarExtract);
 	    }
-
+	
 		convertValues(a: any, classs: any, asMap: boolean = false): any {
 		    if (!a) {
 		        return a;
@@ -395,7 +395,7 @@ export namespace fuzznexus {
 }
 
 export namespace output {
-
+	
 	export class ResultDTO {
 	    id: number;
 	    pos: number;
@@ -412,11 +412,11 @@ export namespace output {
 	    host: string;
 	    scraper_data?: Record<string, string>;
 	    cancelled: boolean;
-
+	
 	    static createFrom(source: any = {}) {
 	        return new ResultDTO(source);
 	    }
-
+	
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.id = source["id"];
@@ -440,24 +440,24 @@ export namespace output {
 }
 
 export namespace scan {
-
+	
 	export class NetworkErrorDTO {
 	    index: number;
 	    message: string;
 	    // Go type: time
 	    timestamp: any;
-
+	
 	    static createFrom(source: any = {}) {
 	        return new NetworkErrorDTO(source);
 	    }
-
+	
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.index = source["index"];
 	        this.message = source["message"];
 	        this.timestamp = this.convertValues(source["timestamp"], null);
 	    }
-
+	
 		convertValues(a: any, classs: any, asMap: boolean = false): any {
 		    if (!a) {
 		        return a;
@@ -481,11 +481,11 @@ export namespace scan {
 	    new_ip_hash: string;
 	    new_raw_ip?: string;
 	    error?: string;
-
+	
 	    static createFrom(source: any = {}) {
 	        return new SafeStopTestResultDTO(source);
 	    }
-
+	
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.success = source["success"];
@@ -503,11 +503,11 @@ export namespace scan {
 	    has_fuzz: boolean;
 	    fuzz_location: string;
 	    auto_appended: boolean;
-
+	
 	    static createFrom(source: any = {}) {
 	        return new TargetAnalysis(source);
 	    }
-
+	
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.original = source["original"];
@@ -524,7 +524,7 @@ export namespace scan {
 }
 
 export namespace store {
-
+	
 	export class FilterRule {
 	    id: string;
 	    field: string;
@@ -533,11 +533,11 @@ export namespace store {
 	    value2?: string;
 	    enabled: boolean;
 	    layer: string;
-
+	
 	    static createFrom(source: any = {}) {
 	        return new FilterRule(source);
 	    }
-
+	
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.id = source["id"];
@@ -555,11 +555,11 @@ export namespace store {
 	    rules: FilterRule[];
 	    groups?: FilterGroup[];
 	    enabled: boolean;
-
+	
 	    static createFrom(source: any = {}) {
 	        return new FilterGroup(source);
 	    }
-
+	
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.id = source["id"];
@@ -568,7 +568,7 @@ export namespace store {
 	        this.groups = this.convertValues(source["groups"], FilterGroup);
 	        this.enabled = source["enabled"];
 	    }
-
+	
 		convertValues(a: any, classs: any, asMap: boolean = false): any {
 		    if (!a) {
 		        return a;
@@ -593,11 +593,11 @@ export namespace store {
 	    // Go type: time
 	    created_at: any;
 	    filter_json: string;
-
+	
 	    static createFrom(source: any = {}) {
 	        return new FilterPresetDTO(source);
 	    }
-
+	
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.id = source["id"];
@@ -605,7 +605,7 @@ export namespace store {
 	        this.created_at = this.convertValues(source["created_at"], null);
 	        this.filter_json = source["filter_json"];
 	    }
-
+	
 		convertValues(a: any, classs: any, asMap: boolean = false): any {
 		    if (!a) {
 		        return a;
@@ -624,7 +624,7 @@ export namespace store {
 		    return a;
 		}
 	}
-
+	
 	export class SessionDTO {
 	    id: number;
 	    // Go type: time
@@ -636,11 +636,11 @@ export namespace store {
 	    config_redacted_json: string;
 	    total_requests: number;
 	    last_error?: string;
-
+	
 	    static createFrom(source: any = {}) {
 	        return new SessionDTO(source);
 	    }
-
+	
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.id = source["id"];
@@ -652,7 +652,7 @@ export namespace store {
 	        this.total_requests = source["total_requests"];
 	        this.last_error = source["last_error"];
 	    }
-
+	
 		convertValues(a: any, classs: any, asMap: boolean = false): any {
 		    if (!a) {
 		        return a;
@@ -675,17 +675,17 @@ export namespace store {
 }
 
 export namespace wordlists {
-
+	
 	export class CategoryDTO {
 	    id: string;
 	    name: string;
 	    color: string;
 	    is_default: boolean;
-
+	
 	    static createFrom(source: any = {}) {
 	        return new CategoryDTO(source);
 	    }
-
+	
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.id = source["id"];
@@ -701,11 +701,11 @@ export namespace wordlists {
 	    empty_lines_removed: number;
 	    lines_trimmed: number;
 	    duplicates_removed: number;
-
+	
 	    static createFrom(source: any = {}) {
 	        return new CleanResultDTO(source);
 	    }
-
+	
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.id = source["id"];
@@ -725,11 +725,11 @@ export namespace wordlists {
 	    traversal_removed: number;
 	    lines_trimmed: number;
 	    size_bytes: number;
-
+	
 	    static createFrom(source: any = {}) {
 	        return new MergeReportDTO(source);
 	    }
-
+	
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.total_source_lines = source["total_source_lines"];
@@ -751,11 +751,11 @@ export namespace wordlists {
 	    strip_traversal_payloads: boolean;
 	    case_insensitive: boolean;
 	    max_line_len: number;
-
+	
 	    static createFrom(source: any = {}) {
 	        return new SanitizeOptions(source);
 	    }
-
+	
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.trim_whitespace = source["trim_whitespace"];
@@ -782,11 +782,11 @@ export namespace wordlists {
 	    created_at: any;
 	    // Go type: time
 	    updated_at: any;
-
+	
 	    static createFrom(source: any = {}) {
 	        return new WordlistDTO(source);
 	    }
-
+	
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.id = source["id"];
@@ -801,7 +801,7 @@ export namespace wordlists {
 	        this.created_at = this.convertValues(source["created_at"], null);
 	        this.updated_at = this.convertValues(source["updated_at"], null);
 	    }
-
+	
 		convertValues(a: any, classs: any, asMap: boolean = false): any {
 		    if (!a) {
 		        return a;
@@ -828,11 +828,11 @@ export namespace wordlists {
 	    has_whitespace: boolean;
 	    has_crlf: boolean;
 	    is_clean: boolean;
-
+	
 	    static createFrom(source: any = {}) {
 	        return new WordlistHealthDTO(source);
 	    }
-
+	
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.id = source["id"];
@@ -849,11 +849,11 @@ export namespace wordlists {
 	    total_lines: number;
 	    offset: number;
 	    limit: number;
-
+	
 	    static createFrom(source: any = {}) {
 	        return new WordlistPageDTO(source);
 	    }
-
+	
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.lines = source["lines"];
@@ -871,11 +871,11 @@ export namespace wordlists {
 	    risk_level: string;
 	    sample_risky_lines: string[];
 	    summary: string;
-
+	
 	    static createFrom(source: any = {}) {
 	        return new WordlistRiskReportDTO(source);
 	    }
-
+	
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.path = source["path"];
@@ -894,11 +894,11 @@ export namespace wordlists {
 	    unique_lines: number;
 	    avg_line_len: number;
 	    max_line_len: number;
-
+	
 	    static createFrom(source: any = {}) {
 	        return new WordlistStatsDTO(source);
 	    }
-
+	
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.line_count = source["line_count"];
@@ -910,3 +910,4 @@ export namespace wordlists {
 	}
 
 }
+

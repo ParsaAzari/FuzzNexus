@@ -118,7 +118,7 @@
   }
 
   // Resizable Sidebar state & actions
-  let sidebarWidth = $state<number>(300);
+  let sidebarWidth = $state<number>(344);
   let isResizingSidebar = $state<boolean>(false);
 
   onMount(() => {

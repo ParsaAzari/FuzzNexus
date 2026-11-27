@@ -59,7 +59,8 @@ func main() {
 		Height:            340,
 		MinWidth:          640,
 		MinHeight:         340,
-		HideWindowOnClose: true,
+		Frameless:         goruntime.GOOS == "windows",
+		HideWindowOnClose: goruntime.GOOS == "darwin",
 		CSSDragProperty:   "--wails-draggable",
 		CSSDragValue:      "drag",
 		DragAndDrop: &options.DragAndDrop{
@@ -71,6 +72,7 @@ func main() {
 		},
 		BackgroundColour: &options.RGBA{R: 27, G: 38, B: 54, A: 1},
 		OnStartup:        app.startup,
+		OnBeforeClose:    app.beforeClose,
 		OnShutdown:       app.shutdown,
 		Menu:             createApplicationMenu(app),
 		Mac: &mac.Options{

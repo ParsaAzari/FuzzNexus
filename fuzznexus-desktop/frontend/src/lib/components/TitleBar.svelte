@@ -3,7 +3,7 @@
   import { themeStore } from '../stores/theme.svelte';
   import { scanStore } from '../stores/scan.svelte';
   import { shortcutsStore } from '../stores/shortcuts.svelte';
-  import { WindowToggleMaximise } from '../../../wailsjs/runtime/runtime';
+  import { WindowMinimise, WindowToggleMaximise, Quit } from '../../../wailsjs/runtime/runtime';
   import Icon from './Icon.svelte';
   import ThemePicker from './ThemePicker.svelte';
   import Logo from './Logo.svelte';
@@ -15,6 +15,8 @@
   }
 
   let { activeView = 'grid', onViewChange, onOpenAbout }: Props = $props();
+  const isWindows =
+    typeof document !== 'undefined' && document.documentElement.dataset.platform === 'windows';
 
   let btnGrid = $state<HTMLButtonElement | null>(null);
   let btnAnalytics = $state<HTMLButtonElement | null>(null);
@@ -69,13 +71,13 @@
       type="button"
       class="app-branding"
       onclick={() => onOpenAbout?.()}
-      title="About FuzzNexus v1.0.1"
+      title="About FuzzNexus v1.0.2"
       aria-label="About FuzzNexus"
       style="--wails-draggable: no-drag;"
     >
       <Logo size={22} />
       <span class="app-title">FuzzNexus</span>
-      <span class="app-version">v1.0.1</span>
+      <span class="app-version">v1.0.2</span>
     </button>
     {#if scanStore.sessionID > 0}
       <div class="session-badge font-mono">
@@ -174,6 +176,20 @@
     >
       <Icon name="info" size={14} />
     </button>
+
+    {#if isWindows}
+      <div class="win-controls" aria-label="Window Controls">
+        <button type="button" class="win-btn" onclick={() => WindowMinimise()} aria-label="Minimize" title="Minimize">
+          <Icon name="minus" size={13} />
+        </button>
+        <button type="button" class="win-btn" onclick={() => WindowToggleMaximise()} aria-label="Maximize" title="Maximize">
+          <Icon name="square" size={11} />
+        </button>
+        <button type="button" class="win-btn win-close" onclick={() => Quit()} aria-label="Close" title="Close">
+          <Icon name="x" size={13} />
+        </button>
+      </div>
+    {/if}
   </div>
 </header>
 
@@ -192,14 +208,63 @@
     z-index: 10005;
   }
 
-  :global([data-platform="windows"]) .titlebar {
-    padding-right: 138px; /* Safe space for Windows native min/max/close controls */
+  .win-controls {
+    display: inline-flex;
+    align-items: center;
+    margin-left: 6px;
+    padding-left: 6px;
+    border-left: 1px solid var(--border);
+    gap: 2px;
+  }
+
+  .win-btn {
+    all: unset;
+    width: 28px;
+    height: 26px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 5px;
+    color: var(--text-secondary);
+    cursor: pointer;
+    transition: background-color 0.12s ease, color 0.12s ease;
+  }
+
+  .win-btn:hover {
+    background-color: var(--surface-hover);
+    color: var(--text);
+  }
+
+  .win-btn.win-close:hover {
+    background-color: #e81123;
+    color: #ffffff;
   }
 
   .titlebar-left {
     display: flex;
     align-items: center;
     gap: 12px;
+    min-width: 0;
+  }
+
+  .titlebar-right {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-shrink: 0;
+  }
+
+  @media (max-width: 1160px) {
+    .titlebar-right :global(.mode-toggle-btn > span:not(.inline-icon)) {
+      display: none;
+    }
+
+    .session-badge {
+      max-width: 110px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
   }
 
   .traffic-light-spacer {

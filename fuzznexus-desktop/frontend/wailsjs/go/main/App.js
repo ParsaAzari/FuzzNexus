@@ -30,6 +30,10 @@ export function ClearSessions() {
   return window['go']['main']['App']['ClearSessions']();
 }
 
+export function ConfirmQuit() {
+  return window['go']['main']['App']['ConfirmQuit']();
+}
+
 export function CreateSanitizedSandboxWordlist(arg1) {
   return window['go']['main']['App']['CreateSanitizedSandboxWordlist'](arg1);
 }

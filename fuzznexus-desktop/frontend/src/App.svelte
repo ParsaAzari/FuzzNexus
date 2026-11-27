@@ -11,6 +11,7 @@
   import RequestOptionsDrawer from './lib/components/RequestOptionsDrawer.svelte';
   import SessionHistoryModal from './lib/components/SessionHistoryModal.svelte';
   import ErrorDiagnosticsModal from './lib/components/ErrorDiagnosticsModal.svelte';
+  import ConfirmCloseModal from './lib/components/ConfirmCloseModal.svelte';
   import VirtualGrid from './lib/components/VirtualGrid.svelte';
   import Inspector from './lib/components/Inspector.svelte';
   import SplitPane from './lib/components/SplitPane.svelte';
@@ -25,7 +26,7 @@
   import { toastStore } from './lib/stores/toast.svelte';
   import { shortcutsStore, matchesCombo } from './lib/stores/shortcuts.svelte';
   import ShortcutsModal from './lib/components/ShortcutsModal.svelte';
-  import { ExportResults, SaveExportDialog } from '../wailsjs/go/main/App';
+  import { ExportResults, SaveExportDialog, ConfirmQuit } from '../wailsjs/go/main/App';
 
   type ViewMode = 'grid' | 'analytics' | 'wordlists';
   let activeView = $state<ViewMode>('grid');
@@ -33,6 +34,7 @@
   let selectedItem = $derived(resultsStore.selectedItem);
   let isExporting = $state<boolean>(false);
   let isAboutOpen = $state<boolean>(false);
+  let isConfirmCloseOpen = $state<boolean>(false);
   let showSplash = $state<boolean>(true);
 
   $effect(() => {
@@ -43,6 +45,9 @@
       if (w.runtime?.EventsOn) {
         w.runtime.EventsOn('open:about-modal', () => {
           isAboutOpen = true;
+        });
+        w.runtime.EventsOn('app:confirm-close', () => {
+          isConfirmCloseOpen = true;
         });
       }
     }
@@ -493,6 +498,15 @@
   <ErrorDiagnosticsModal
     isOpen={scanStore.showErrorDiagnostics}
     onClose={() => scanStore.closeErrorDiagnostics()}
+  />
+
+  <!-- Scan-in-Progress Close Confirmation Modal -->
+  <ConfirmCloseModal
+    isOpen={isConfirmCloseOpen}
+    onCancel={() => (isConfirmCloseOpen = false)}
+    onConfirm={async () => {
+      await ConfirmQuit();
+    }}
   />
 
   <!-- Global Toast Notifications Overlay -->

@@ -1535,6 +1535,19 @@
     display: flex;
     align-items: center;
     gap: 8px;
+    flex-wrap: wrap;
+  }
+
+  @media (max-width: 1120px) {
+    .actions-row {
+      flex-wrap: wrap;
+      row-gap: 6px;
+    }
+
+    .telemetry-group {
+      flex: 1 1 220px;
+      margin: 0;
+    }
   }
 
   .btn {

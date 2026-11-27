@@ -20,6 +20,8 @@ export function CleanupSandboxWordlist(arg1:string):Promise<void>;
 
 export function ClearSessions():Promise<number>;
 
+export function ConfirmQuit():Promise<void>;
+
 export function CreateSanitizedSandboxWordlist(arg1:string):Promise<wordlists.WordlistDTO>;
 
 export function CreateWordlist(arg1:string,arg2:string):Promise<wordlists.WordlistDTO>;
